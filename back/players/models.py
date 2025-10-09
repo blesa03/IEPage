@@ -20,7 +20,9 @@ class DraftPlayer(models.Model):
  	# TODO: Cambiar por ForeignKey
 	team_id = models.IntegerField()
 	name = models.CharField(max_length=100)
-	draft_id = models.ForeignKey(Draft, on_delete=models.CASCADE)
+	draft_id = models.ForeignKey(Draft, on_delete=models.CASCADE, related_name='players')
+	# Orden en el que escogen en el draft
+	order = models.IntegerField(null=True)
 
 	def __str__(self):
 		return self.name

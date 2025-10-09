@@ -16,7 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from back.draft.views import get_players_by_draft, start_draft, finish_draft
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('draft/<int:draft_id>/players', get_players_by_draft, name='get_players_by_draft'),
+    path('draft/<int:draft_id>/start', start_draft, name='start_draft'),
+    path('draft/<int:draft_id>/finish', finish_draft, name='finish_draft'),
 ]
