@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/home";
 import Login from "./pages/login";
-import Draft from "./pages/draft";
+import Draft from "./pages/draft";   
 import Ranking from "./pages/ranking";
 import Team from "./pages/team";
 import Market from "./pages/market";
@@ -27,6 +27,12 @@ export default function App() {
     <BrowserRouter>
       <nav className="h-16 flex items-center gap-4 px-6 border-b border-white/10 bg-slate-900/70 backdrop-blur">
         <Link to="/" className="font-semibold tracking-tight">Inazuma Eleven</Link>
+
+        <Link to="/market" className="text-white/70 hover:text-white">Market</Link>
+        <Link to="/ranking" className="text-white/70 hover:text-white">Ranking</Link>
+        <Link to="/team" className="text-white/70 hover:text-white">Team</Link>
+        <Link to="/draft/1" className="text-white/70 hover:text-white">Draft (id:1)</Link>
+
         <div className="ml-auto flex items-center gap-3">
           {!user ? (
             <Link
@@ -52,11 +58,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home user={user} onLogout={onLogout} />} />
         <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogged={setUser} />} />
-        <Route path="/draft" element={<Draft />} />
+
+        {/* 👇 ahora el draft recibe :draftId */}
+        <Route path="/draft/:draftId" element={<Draft />} />
+
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/team" element={<Team />} />
         <Route path="/market" element={<Market />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/draft" />} />
       </Routes>
     </BrowserRouter>
   );
