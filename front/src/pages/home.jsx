@@ -53,12 +53,13 @@ export default function Home({ user, onLogout }) {
       {/* Secciones */}
       <section
         id="secciones"
-        className="mx-auto max-w-5xl px-6 pb-20 grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        className="mx-auto max-w-5xl px-6 pb-20 grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {[
-          { t: "Draft", d: "Personajes del draft" },
-          { t: "Ejemplo", d: "EjemploEjemploEjemploEjemploEjemplo" },
-          { t: "Ejemplo", d: "EjemploEjemploEjemploEjemploEjemplo" },
+          { t: "Draft Relámpago", d: "Elige por turnos a tus jugadores y fija la táctica del equipo desde el primer pick" },
+          { t: "Clasificación Inazuma", d: "Clasificación en vivo con victorias, goles, asistencias para ver quién manda" },
+          { t: "Mi Plantilla", d: "Visualiza tu plantilla, formación y roles de un vistazo para ajustar tu estrategia" },
+          { t: "Ventana de Traspasos", d: "Administra tu dinero para fichar o traspasar jugadores entre equipos" },
 
         ].map((c) => (
           <article
