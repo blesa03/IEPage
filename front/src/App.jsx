@@ -2,6 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/home";
 import Login from "./pages/login";
+import Draft from "./pages/draft";
+import Ranking from "./pages/ranking";
+import Team from "./pages/team";
+import Market from "./pages/market";
 import { me, logout } from "./api";
 
 export default function App() {
@@ -48,6 +52,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home user={user} onLogout={onLogout} />} />
         <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogged={setUser} />} />
+        <Route path="/draft" element={<Draft />} />
+        <Route path="/ranking" element={<Ranking />} />
+        <Route path="/team" element={<Team />} />
+        <Route path="/market" element={<Market />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

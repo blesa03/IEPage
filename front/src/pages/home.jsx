@@ -56,22 +56,19 @@ export default function Home({ user, onLogout }) {
         className="mx-auto max-w-5xl px-6 pb-20 grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {[
-          { t: "Draft Relámpago", d: "Elige por turnos a tus jugadores y fija la táctica del equipo desde el primer pick" },
-          { t: "Clasificación Inazuma", d: "Clasificación en vivo con victorias, goles, asistencias para ver quién manda" },
-          { t: "Mi Plantilla", d: "Visualiza tu plantilla, formación y roles de un vistazo para ajustar tu estrategia" },
-          { t: "Ventana de Traspasos", d: "Administra tu dinero para fichar o traspasar jugadores entre equipos" },
-
+          { t: "Draft Relámpago", d: "Elige por turnos a tus jugadores y fija la táctica del equipo desde el primer pick", link: "/draft" },
+          { t: "Clasificación Inazuma", d: "Clasificación en vivo con victorias, goles, asistencias para ver quién manda", link: "/ranking" },
+          { t: "Mi Plantilla", d: "Visualiza tu plantilla, formación y roles de un vistazo para ajustar tu estrategia", link: "/team" },
+          { t: "Ventana de Traspasos", d: "Administra tu dinero para fichar o traspasar jugadores entre equipos", link: "/market" },
         ].map((c) => (
-          <article
+          <Link
+            to={c.link}
             key={c.t}
-            className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:bg-white/10 transition"
+            className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:bg-white/10 transition block"
           >
             <h3 className="text-xl font-bold">{c.t}</h3>
             <p className="text-white/80 mt-1">{c.d}</p>
-            <button className="mt-4 text-cyan-300 hover:text-cyan-200 underline underline-offset-4">
-              Abrir
-            </button>
-          </article>
+          </Link>
         ))}
       </section>
     </main>
