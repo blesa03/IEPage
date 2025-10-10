@@ -13,8 +13,8 @@ class User(models.Model):
 
 class DraftUser(models.Model):
     username = models.CharField(max_length=100)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    draft_id = models.ForeignKey(Draft, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    draft = models.ForeignKey(Draft, on_delete=models.CASCADE)
     
     def __str__(self):
         return self.username
