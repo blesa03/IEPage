@@ -1,11 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/home";
 import Login from "./pages/login";
-import Draft from "./pages/draft";   
+import Draft from "./pages/draft";
 import Ranking from "./pages/ranking";
 import Team from "./pages/team";
 import Market from "./pages/market";
+import Register from "./pages/register";
+import League from "./pages/league"; // 👈 nuevo
 import { me, logout } from "./api";
 
 export default function App() {
@@ -13,7 +15,10 @@ export default function App() {
   const [loadingMe, setLoadingMe] = useState(true);
 
   useEffect(() => {
-    me().then(setUser).catch(() => setUser(null)).finally(() => setLoadingMe(false));
+    me()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoadingMe(false));
   }, []);
 
   const onLogout = async () => {
@@ -21,51 +26,26 @@ export default function App() {
     setUser(null);
   };
 
-  if (loadingMe) return <div className="p-6">Cargando…</div>;
+  if (loadingMe) return null;
 
   return (
     <BrowserRouter>
-      <nav className="h-16 flex items-center gap-4 px-6 border-b border-white/10 bg-slate-900/70 backdrop-blur">
-        <Link to="/" className="font-semibold tracking-tight">Inazuma Eleven</Link>
-
-        <Link to="/market" className="text-white/70 hover:text-white">Market</Link>
-        <Link to="/ranking" className="text-white/70 hover:text-white">Ranking</Link>
-        <Link to="/team" className="text-white/70 hover:text-white">Team</Link>
-        <Link to="/draft/1" className="text-white/70 hover:text-white">Draft (id:1)</Link>
-
-        <div className="ml-auto flex items-center gap-3">
-          {!user ? (
-            <Link
-              to="/login"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 transition"
-            >
-              Login
-            </Link>
-          ) : (
-            <>
-              <span className="text-white/80">Hola, <b>{user.username}</b></span>
-              <button
-                onClick={onLogout}
-                className="px-3 py-1.5 rounded-lg bg-red-500 hover:opacity-90 transition"
-              >
-                Salir
-              </button>
-            </>
-          )}
-        </div>
-      </nav>
-
       <Routes>
         <Route path="/" element={<Home user={user} onLogout={onLogout} />} />
-        <Route path="/login" element={user ? <Navigate to="/" /> : <Login onLogged={setUser} />} />
-
-        {/* 👇 ahora el draft recibe :draftId */}
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/" /> : <Login onLogged={setUser} />}
+        />
+        <Route
+          path="/register"
+          element={user ? <Navigate to="/" /> : <Register onRegistered={setUser} />}
+        />
+        <Route path="/league/:leagueId" element={<League />} />
         <Route path="/draft/:draftId" element={<Draft />} />
-
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/team" element={<Team />} />
         <Route path="/market" element={<Market />} />
-        <Route path="*" element={<Navigate to="/draft" />} />
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );

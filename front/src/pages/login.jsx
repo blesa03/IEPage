@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { login, me } from "../api";
 
 export default function Login({ onLogged }) {
@@ -18,7 +19,7 @@ export default function Login({ onLogged }) {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-6 rounded-2xl border border-white/10 bg-white/5">
+    <div className="max-w-sm mx-auto mt-16 p-6 rounded-2xl border border-white/10 bg-white/5 text-white">
       <h1 className="text-2xl font-bold">Iniciar sesión</h1>
       <form onSubmit={submit} className="mt-4 grid gap-3">
         <input
@@ -34,11 +35,24 @@ export default function Login({ onLogged }) {
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
-        <button type="submit" className="mt-1 rounded-lg px-4 py-2 font-semibold bg-cyan-400 text-black hover:opacity-90">
+        <button
+          type="submit"
+          className="mt-1 rounded-lg px-4 py-2 font-semibold bg-cyan-400 text-black hover:opacity-90"
+        >
           Entrar
         </button>
         {err && <div className="text-red-400">{err}</div>}
       </form>
+
+      <div className="mt-4 text-sm text-white/80">
+        ¿No tienes cuenta?{" "}
+        <Link
+          to="/register"
+          className="font-semibold text-cyan-300 hover:underline"
+        >
+          Crear cuenta
+        </Link>
+      </div>
     </div>
   );
 }
