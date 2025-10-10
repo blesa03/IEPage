@@ -3,9 +3,9 @@ from users.types import UserRole
 from draft.models import Draft
 
 class User(models.Model):
-    username = models.CharField(max_length=100)
-    # TODO: Esto es para que entren ya pero se quitara por password
-    key = models.CharField(max_length=100)
+    username = models.CharField(max_length=100, unique=True)
+    # Guardaremos AQUÍ el hash de la contraseña (PBKDF2) usando django.contrib.auth.hashers
+    key = models.CharField(max_length=128)
     role = models.CharField(max_length=6, choices=UserRole, default=UserRole.PLAYER)
     
     def __str__(self):
