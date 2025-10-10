@@ -2,6 +2,7 @@ from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from .models import User
 import json
 
@@ -68,6 +69,7 @@ def logout(request: HttpRequest):
     request.session.flush()
     return JsonResponse({'ok': True})
 
+@ensure_csrf_cookie
 def me(request: HttpRequest):
     user_id = request.session.get('user_id')
     if not user_id:

@@ -22,29 +22,42 @@ export default function League() {
     }
   }, [leagueId]);
 
-  const title = useMemo(
-    () => (league?.name ? `¡Bienvenido a ${league.name}!` : "¡Bienvenido!"),
-    [league?.name]
-  );
+  const leagueName = league?.name ?? "tu liga";
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Banner con saludo */}
-      <header className="relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800">
-        <div className="max-w-6xl mx-auto px-4 py-12 flex items-center gap-8">
-          <div className="flex-1">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-              {title}
-            </h1>
-            <p className="mt-2 text-white/70">
-              Selecciona una sección para continuar.
-            </p>
-          </div>
-          <div className="w-56 h-28 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center">
-            <span className="text-sm text-white/70">Banner</span>
-          </div>
+      <header className="relative bg-gradient-to-r from-slate-900 to-slate-800">
+        <div className="max-w-6xl mx-auto px-4 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            {/* Columna texto (50%) */}
+            <div className="space-y-3">
+                <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
+                    ¡Bienvenido a{" "}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-orange-400 to-red-500 drop-shadow-[0_2px_0_rgba(0,0,0,0.45)]">
+                        {leagueName}
+                    </span>
+                    !
+                </h1>
+                <p className="mt-2 text-white/80">
+                Selecciona una sección para continuar.
+                </p>
+            </div>
+
+            {/* Columna imagen (50%) */}
+            <div className="relative">
+                <div className="aspect-[16/10] w-full rounded-2xl border border-white/10 bg-white/5 overflow-hidden shadow-lg">
+                <img
+                    src="https://i.pinimg.com/736x/2c/10/62/2c10620b1c9c85229f8ff46cce795fcf.jpg"
+                    alt="Inazuma Eleven"
+                    className="w-full h-full object-cover"
+                />
+                </div>
+            </div>
+            </div>
         </div>
       </header>
+
 
       {/* Menú de secciones (los 4 botones del home actual) */}
       <main className="max-w-6xl mx-auto px-4 py-10 grid gap-4 sm:grid-cols-2 md:grid-cols-4">

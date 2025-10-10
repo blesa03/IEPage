@@ -5,5 +5,5 @@ export const getDraftPlayers = async (draftId) => {
   return res.data;
 };
 
-export const startDraft  = (draftId) => api.post(`/draft/${draftId}/start`);
-export const finishDraft = (draftId) => api.post(`/draft/${draftId}/finish`);
+export const startDraft  = (draftId) => api.put(`/draft/${draftId}/start`);
+export const finishDraft = (draftId) => api.put(`/draft/${draftId}/finish`);
