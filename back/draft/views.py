@@ -4,6 +4,7 @@ from players.models import DraftPlayer
 from users.models import DraftUser
 from draft.models import Draft
 from draft.types import DraftStatus
+from team.models import Team
 import random
 
 def get_players_by_draft(request: HttpRequest, draft_id):
@@ -66,5 +67,28 @@ def finish_draft(request: HttpRequest, draft_id):
     draft.save(update_fields=['status'])
 
     return JsonResponse({'message': 'Draft actualizado correctamente'})
+
     
+def acquire_player(request: HttpRequest, draft_id):
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    try:
+        draft = Draft.objects.get(id=draft_id)
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+
+    try:
+        draft_player = DraftPlayer.objects.get(id=request.body['draft_player_id'])
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Player no encontrado'}, status=404)
+    
+    try:
+        team = Team.objects.get(draft=draft, draft_user=request.body['draft_user_id'])
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Player no encontrado'}, status=404)
+    
+    draft_player.team = team
+    draft_player.save(update_fields=['team'])
+
+    return JsonResponse({'message': 'Jugador adquirido correctamente'})
