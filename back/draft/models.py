@@ -6,8 +6,8 @@ from draft.types import DraftStatus
 class Draft(models.Model):
     league = models.ForeignKey(League, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    current_draft_player = models.ForeignKey(
-        'players.DraftPlayer',
+    current_draft_user = models.ForeignKey(
+        'users.DraftUser',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
