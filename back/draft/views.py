@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest
-from back.players.models import DraftPlayer
-from back.draft.models import Draft
-from back.draft.types import DraftStatus
+from players.models import DraftPlayer
+from draft.models import Draft
+from draft.types import DraftStatus
 import random
 
 def get_players_by_draft(request: HttpRequest, draft_id):

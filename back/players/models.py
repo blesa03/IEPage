@@ -1,6 +1,6 @@
+
 from django.db import models
-from back.draft.models import Draft
-from back.players.types import PlayerElement, PlayerGender, PlayerPosition
+from players.types import PlayerElement, PlayerGender, PlayerPosition
 
 
 # Modelo para todos los jugadores de la base de datos
@@ -15,12 +15,13 @@ class Player(models.Model):
 		return self.name
 
 # Modelo para los jugadores seleccionables en el draft
+
 class DraftPlayer(models.Model):
 	player_id = models.ForeignKey(Player, on_delete=models.CASCADE)
- 	# TODO: Cambiar por ForeignKey
+	# TODO: Cambiar por ForeignKey
 	team_id = models.IntegerField()
 	name = models.CharField(max_length=100)
-	draft_id = models.ForeignKey(Draft, on_delete=models.CASCADE, related_name='players')
+	draft_id = models.ForeignKey('draft.Draft', on_delete=models.CASCADE, related_name='players', null=True, blank=True)
 	# Orden en el que escogen en el draft
 	order = models.IntegerField(null=True)
 

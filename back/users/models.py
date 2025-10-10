@@ -1,6 +1,6 @@
 from django.db import models
-from back.users.types import UserRole
-from back.draft.models import Draft
+from users.types import UserRole
+from draft.models import Draft
 
 class User(models.Model):
     username = models.CharField(max_length=100)

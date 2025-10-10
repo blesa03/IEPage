@@ -1,6 +1,6 @@
 from django.db import models
-from back.draft.models import Draft
-from back.users.models import DraftUser
+from draft.models import Draft
+from users.models import DraftUser
 
 class Team(models.Model):
     name = models.CharField(max_length=100)
