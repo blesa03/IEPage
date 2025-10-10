@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest
 from players.models import DraftPlayer
+from users.models import DraftUser
 from draft.models import Draft
 from draft.types import DraftStatus
 import random
@@ -17,7 +18,7 @@ def get_players_by_draft(request: HttpRequest, draft_id):
     if draft.status != DraftStatus.IN_PROGRESS:
         return JsonResponse({'error': 'El Draft no ha comenzado'}, status=409)
         
-    players = DraftPlayer.objects.filter(draft_id=draft_id)
+    players = DraftPlayer.objects.filter(draft=draft_id)
     data = list(players.values())
     
     return JsonResponse(data, safe=False)
@@ -34,20 +35,19 @@ def start_draft(request: HttpRequest, draft_id):
     draft.status = DraftStatus.IN_PROGRESS
     draft.save(update_fields=['status'])
     
-    players = list(DraftPlayer.objects.filter(draft_id=draft_id))
+    users = list(DraftUser.objects.filter(draft=draft_id))
     
-    if not players:
+    if not users:
         return JsonResponse({'error': 'No hay jugadores en este draft'}, status=404)
     
-    random.shuffle(players)
+    random.shuffle(users)
     
-    for i, draft_player in enumerate(players, start=1):
+    for i, draft_player in enumerate(users, start=1):
         draft_player.order = i
         draft_player.save(update_fields=['order'])
     
-    first_player = players[0].player_id
-    draft.current_draft_player_id = first_player
-    draft.save(update_fields=['current_draft_player_id'])
+    draft.current_draft_user = users[0]
+    draft.save(update_fields=['current_draft_player'])
 
     return JsonResponse({'message': 'Draft actualizado correctamente'})
     

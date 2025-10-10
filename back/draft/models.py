@@ -4,10 +4,10 @@ from draft.types import DraftStatus
 
 # Create your models here.
 class Draft(models.Model):
-    league_id = models.ForeignKey(League, on_delete=models.CASCADE)
+    league = models.ForeignKey(League, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    current_draft_player_id = models.ForeignKey(
-        'players.DraftPlayer',
+    current_draft_user = models.ForeignKey(
+        'users.DraftUser',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
