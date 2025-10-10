@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getDraftPlayers, startDraft, finishDraft } from "../api/draft";
 
 const POS_LABEL = { GK: "Porteros", DF: "Defensas", MF: "Centrocampistas", FW: "Delanteros" };
@@ -10,8 +10,12 @@ function PlayerRow({ item }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 grid place-items-center rounded-md bg-white/10 border border-white/10 text-sm">
-          #{p.number ?? "?"}
+        <div className="w-9 h-9 grid place-items-center rounded-md bg-white/10 border border-white/10 overflow-hidden">
+          {p.sprite ? (
+            <img src={p.sprite} alt={p.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-sm">?</span>
+          )}
         </div>
         <div>
           <div className="font-semibold leading-tight">{p.name}</div>
@@ -24,7 +28,8 @@ function PlayerRow({ item }) {
 }
 
 export default function Draft() {
-  const { draftId } = useParams();     // ruta: /draft/:draftId
+  const { draftId } = useParams();
+  const nav = useNavigate();
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState([]);
   const [error, setError] = useState("");
@@ -36,7 +41,6 @@ export default function Draft() {
     setLoading(true); setError(""); setNotStarted(false);
     try {
       const raw = await getDraftPlayers(draftId);
-      // normaliza el shape esperado desde tu view .values()
       const list = raw.map(r => ({
         id: r.id,
         order: r.order,
@@ -44,18 +48,14 @@ export default function Draft() {
         player: {
           id: r.player_id,
           name: r.player__name,
-          position: r.player__position,    // "GK"|"DF"|"MF"|"FW"
+          position: r.player__position,
           number: r.player__number,
         },
       }));
       setPlayers(list);
     } catch (e) {
-      if (e.status === 409) {
-        // "El Draft no ha comenzado"
-        setNotStarted(true);
-      } else {
-        setError(e.message || "Error al cargar jugadores");
-      }
+      if (e.status === 409) setNotStarted(true);
+      else setError(e.message || "Error al cargar jugadores");
       setPlayers([]);
     } finally {
       setLoading(false);
@@ -73,36 +73,33 @@ export default function Draft() {
 
   const onStart = async () => {
     setStarting(true); setError("");
-    try {
-      await startDraft(draftId);
-      await load();
-    } catch (e) {
-      setError(e.message || "No se pudo iniciar el draft");
-    } finally {
-      setStarting(false);
-    }
+    try { await startDraft(draftId); await load(); } 
+    catch (e) { setError(e.message || "No se pudo iniciar el draft"); }
+    finally { setStarting(false); }
   };
 
   const onFinish = async () => {
     setFinishing(true); setError("");
-    try {
-      await finishDraft(draftId);
-      // opcional: desactivar UI o mostrar toast
-    } catch (e) {
-      setError(e.message || "No se pudo finalizar el draft");
-    } finally {
-      setFinishing(false);
-    }
+    try { await finishDraft(draftId); } 
+    catch (e) { setError(e.message || "No se pudo finalizar el draft"); }
+    finally { setFinishing(false); }
   };
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-8">
-      <header className="mx-auto max-w-6xl mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1">
+      {/* Encabezado con botón Volver */}
+      <header className="mx-auto max-w-6xl mb-6 flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
+        <button
+          onClick={() => nav(-1)}
+          className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
+        >
+          ← Volver
+        </button>
+        <div className="flex-1 text-center sm:text-left">
           <h1 className="text-3xl font-extrabold tracking-tight">Draft</h1>
           <p className="text-white/70">Inicia el draft para asignar orden y ver a los jugadores por posición.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-2 sm:mt-0">
           <button
             onClick={onStart}
             disabled={starting}

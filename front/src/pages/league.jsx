@@ -42,6 +42,12 @@ export default function League() {
                 <p className="mt-2 text-white/80">
                 Selecciona una sección para continuar.
                 </p>
+                
+                <div className="mt-6 space-y-2 text-white/70">
+                  <p>Equipos inscritos: {league?.teams?.length ?? "–"}</p>
+                  <p>Jugadores totales: {league?.players?.length ?? "–"}</p>
+                  <p>Última actualización: {league?.lastUpdated ?? "–"}</p>
+                </div>
             </div>
 
             {/* Columna imagen (50%) */}
