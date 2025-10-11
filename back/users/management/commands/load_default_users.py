@@ -37,7 +37,7 @@ class Command(BaseCommand):
         draft = Draft.objects.get()
 
         for user in self.users:
-            user = User.objects.create_user(
+            user = User.objects.create(
                 username=user['username'],
                 key=uuid4(),
             )
