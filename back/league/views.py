@@ -1,21 +1,12 @@
 from django.http import JsonResponse, HttpRequest
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from users.models import User, DraftUser
-from draft.models import Draft
+from users.models import DraftUser
 from .models import League
 import json
 
-def _me(request: HttpRequest):
-    uid = request.session.get('user_id')
-    if not uid:
-        return None
-    try:
-        return User.objects.get(id=uid)
-    except User.DoesNotExist:
-        return None
+def _me(request):
+    return request.user if request.user.is_authenticated else None
 
-def _require_auth(request: HttpRequest):
+def _require_auth(request):
     user = _me(request)
     if not user:
         return JsonResponse({'error': 'No autenticado'}, status=401)
@@ -30,26 +21,26 @@ def my_leagues(request: HttpRequest):
         return user
 
     # 1) Ligas donde es owner
-    owner_qs = League.objects.filter(owner=user)
+    owner_qs = League.objects.filter(owner=user).values('id', 'name')
 
-    # 2) Ligas donde participa via DraftUser (agrupando por liga)
+    # 2) Ligas donde participa vía DraftUser (agrupando por liga), excluyendo las que ya es owner
     part_league_ids = (
         DraftUser.objects
         .filter(user=user)
         .values_list('draft__league_id', flat=True)
         .distinct()
     )
-    participant_qs = League.objects.filter(id__in=part_league_ids).exclude(owner=user)
+    participant_qs = League.objects.filter(id__in=part_league_ids).exclude(owner=user).values('id', 'name')
 
-    data = []
-    for lg in owner_qs:
-        data.append({'id': lg.id, 'name': lg.name, 'role': 'owner'})
-    for lg in participant_qs:
-        data.append({'id': lg.id, 'name': lg.name, 'role': 'player'})
+    # Opcional: ordenar por rol y nombre
+    data = (
+        [{'id': lg['id'], 'name': lg['name'], 'role': 'owner'} for lg in owner_qs] +
+        [{'id': lg['id'], 'name': lg['name'], 'role': 'player'} for lg in participant_qs]
+    )
+    # data.sort(key=lambda x: (0 if x['role']=='owner' else 1, x['name'].lower()))
 
     return JsonResponse(data, safe=False)
 
-@csrf_exempt
 def create_league(request: HttpRequest):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -61,14 +52,17 @@ def create_league(request: HttpRequest):
     try:
         body = json.loads((request.body or b'').decode('utf-8')) or {}
     except Exception:
-        body = {}
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
 
     name = (body.get('name') or '').strip()
     if not name:
         return JsonResponse({'error': 'Nombre obligatorio'}, status=400)
 
     league = League.objects.create(name=name, owner=user)
-    return JsonResponse({'id': league.id, 'name': league.name, 'owner': {'id': user.id, 'username': user.username}})
+    return JsonResponse(
+        {'id': league.id, 'name': league.name, 'owner': {'id': user.id, 'username': user.username}},
+        status=201
+    )
 
 def get_league(request: HttpRequest, league_id: int):
     if request.method != 'GET':
@@ -79,12 +73,12 @@ def get_league(request: HttpRequest, league_id: int):
         return user
 
     try:
-        league = League.objects.get(id=league_id)
+        league = League.objects.select_related('owner').get(id=league_id)  # 🔍 evita N+1
     except League.DoesNotExist:
         return JsonResponse({'error': 'No encontrado'}, status=404)
 
     # Seguridad mínima: solo owner o participante en algún draft de la liga
-    is_owner = league.owner_id == user.id
+    is_owner = (league.owner_id == user.id)
     is_participant = DraftUser.objects.filter(user=user, draft__league_id=league.id).exists()
     if not (is_owner or is_participant):
         return JsonResponse({'error': 'No autorizado'}, status=403)
