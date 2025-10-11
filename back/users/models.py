@@ -5,7 +5,9 @@ from draft.models import Draft
 class User(models.Model):
     username = models.CharField(max_length=100, unique=True)
     # Guardaremos AQUÍ el hash de la contraseña (PBKDF2) usando django.contrib.auth.hashers
-    key = models.CharField(max_length=128)
+    # key = models.CharField(max_length=128)
+    # NOTE: De momento se queda asi y mas adelante hacemos el sign up
+    key = models.UUIDField()
     role = models.CharField(max_length=6, choices=UserRole, default=UserRole.PLAYER)
     
     def __str__(self):
