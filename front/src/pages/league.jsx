@@ -13,11 +13,8 @@ export default function League() {
     }
   });
 
-  // Si entran por URL directa y no hay datos guardados, al menos
-  // persistimos el id para futuros fetches (opcional)
   useEffect(() => {
     if (league && `${league.id}` !== `${leagueId}`) {
-      // Si hay mismatch, ajusta el id local
       setLeague((prev) => (prev ? { ...prev, id: leagueId } : prev));
     }
   }, [leagueId]);
