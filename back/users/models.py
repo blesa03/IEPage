@@ -1,23 +1,29 @@
 from django.db import models
-from users.types import UserRole
 from draft.models import Draft
+from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 
-class User(models.Model):
-    username = models.CharField(max_length=100, unique=True)
-    # Guardaremos AQUÍ el hash de la contraseña (PBKDF2) usando django.contrib.auth.hashers
-    # key = models.CharField(max_length=128)
-    # NOTE: De momento se queda asi y mas adelante hacemos el sign up
-    key = models.UUIDField()
-    role = models.CharField(max_length=6, choices=UserRole, default=UserRole.PLAYER)
-    
+class User(AbstractUser):
+    ROLE = (("admin", "admin"), ("player", "player"))
+    role = models.CharField(max_length=10, choices=ROLE, default="player")
+
     def __str__(self):
         return self.username
 
 class DraftUser(models.Model):
-    username = models.CharField(max_length=100)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     draft = models.ForeignKey(Draft, on_delete=models.CASCADE)
     order = models.IntegerField(null=True, blank=True)
-    
+
+    class Meta:
+        # un usuario no puede estar dos veces en el mismo draft
+        constraints = [
+            models.UniqueConstraint(fields=["draft", "user"], name="unique_user_in_draft"),
+        ]
+        indexes = [
+            models.Index(fields=["draft"]),
+            models.Index(fields=["user"]),
+        ]
+
     def __str__(self):
-        return self.username
+        return self.user.username

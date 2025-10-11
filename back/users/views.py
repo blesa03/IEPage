@@ -1,10 +1,9 @@
 from django.http import JsonResponse, HttpRequest
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.hashers import make_password, check_password
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
-from .models import User
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
 import json
+
+User = get_user_model()
 
 def _json_body(request: HttpRequest) -> dict:
     try:
@@ -29,17 +28,15 @@ def register(request: HttpRequest):
 
     if not username or not password:
         return JsonResponse({'error': 'username y password son obligatorios'}, status=400)
-
     if User.objects.filter(username__iexact=username).exists():
         return JsonResponse({'error': 'Ese usuario ya existe'}, status=409)
 
-    user = User.objects.create(
+    user = User.objects.create_user(
         username=username,
-        key=make_password(password),
+        password=password,
         role=role if role in ('admin', 'player') else 'player'
     )
-
-    request.session['user_id'] = user.id
+    auth_login(request, user)
     return JsonResponse({'id': user.id, 'username': user.username, 'role': user.role})
 
 @csrf_exempt
@@ -51,32 +48,23 @@ def login(request: HttpRequest):
     username = (data.get('username') or '').strip()
     password = data.get('password') or ''
 
-    try:
-        user = User.objects.get(username__iexact=username)
-    except User.DoesNotExist:
+    user = authenticate(request, username=username, password=password)
+    if not user:
         return JsonResponse({'error': 'Credenciales inválidas'}, status=401)
 
-    if not check_password(password, user.key):
-        return JsonResponse({'error': 'Credenciales inválidas'}, status=401)
-
-    request.session['user_id'] = user.id
+    auth_login(request, user)
     return JsonResponse({'id': user.id, 'username': user.username, 'role': user.role})
 
 @csrf_exempt
 def logout(request: HttpRequest):
     not_allowed = _require_method(request, 'POST')
     if not_allowed: return not_allowed
-    request.session.flush()
+    auth_logout(request)
     return JsonResponse({'ok': True})
 
 @ensure_csrf_cookie
 def me(request: HttpRequest):
-    user_id = request.session.get('user_id')
-    if not user_id:
+    if not request.user.is_authenticated:
         return JsonResponse({'error': 'No autenticado'}, status=401)
-    try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
-        request.session.flush()
-        return JsonResponse({'error': 'No autenticado'}, status=401)
-    return JsonResponse({'id': user.id, 'username': user.username, 'role': user.role})
+    user = request.user
+    return JsonResponse({'id': user.id, 'username': user.username, 'role': getattr(user, 'role', 'player')})

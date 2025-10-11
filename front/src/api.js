@@ -1,8 +1,12 @@
 import axios from "axios";
+
 export const api = axios.create({
   baseURL: "http://localhost:8000/api",
   withCredentials: true,
 });
+
+api.defaults.xsrfCookieName = "csrftoken";
+api.defaults.xsrfHeaderName = "X-CSRFToken";
 
 export const login    = (username, password) => api.post("/auth/login",    { username, password });
 export const logout   = () => api.post("/auth/logout");

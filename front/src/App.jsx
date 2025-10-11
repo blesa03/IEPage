@@ -7,7 +7,7 @@ import Ranking from "./pages/ranking";
 import Team from "./pages/team";
 import Market from "./pages/market";
 import Register from "./pages/register";
-import League from "./pages/league"; // 👈 nuevo
+import League from "./pages/league";
 import { me, logout } from "./api";
 
 export default function App() {
