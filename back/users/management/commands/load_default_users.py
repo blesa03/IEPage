@@ -12,8 +12,8 @@ class Command(BaseCommand):
             'team_name': 'Picao Histórico FC',
         },
         {
-            'username': '',
-            'team_name': '',
+            'username': 'xhino',
+            'team_name': 'Alimentación Xhino',
         },
         {
             'username': '',
@@ -37,7 +37,7 @@ class Command(BaseCommand):
         draft = Draft.objects.get()
 
         for user in self.users:
-            user = User.objects.create(
+            user = User.objects.create_user(
                 username=user['username'],
                 key=uuid4(),
             )

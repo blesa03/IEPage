@@ -11,6 +11,7 @@ class Player(models.Model):
 	position = models.CharField(max_length=2, choices=PlayerPosition)
 	element = models.CharField(max_length=5, choices=PlayerElement)
 	sprite = models.ImageField(upload_to='imgs/', blank=True, null=True)
+	value = models.DecimalField(defaul=0.0, max_digits=100, decimal_places=2)
 
 	def __str__(self):
 		return self.name
@@ -22,8 +23,8 @@ class DraftPlayer(models.Model):
 	team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True)
 	name = models.CharField(max_length=100)
 	draft = models.ForeignKey('draft.Draft', on_delete=models.CASCADE, related_name='players', null=True, blank=True)
+	value = models.DecimalField(defaul=0.0, max_digits=100, decimal_places=2)
+	release_clause = models.DecimalField(defaul=0.0, max_digits=100, decimal_places=2)
 
 	def __str__(self):
 		return self.name
-
-
