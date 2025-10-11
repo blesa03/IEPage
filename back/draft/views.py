@@ -1,12 +1,15 @@
 from django.shortcuts import render
-from django.http import JsonResponse, HttpRequest
+from django.http import JsonResponse, HttpRequest, StreamingHttpResponse
 from players.models import DraftPlayer
 from users.models import DraftUser
 from draft.models import Draft
 from draft.types import DraftStatus
 from team.models import Team
+import time
 import random
+import json
 
+# TODO: Eliminar y mantener el SSE
 def get_players_by_draft(request: HttpRequest, draft_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -23,6 +26,35 @@ def get_players_by_draft(request: HttpRequest, draft_id):
     data = list(players.values())
     
     return JsonResponse(data, safe=False)
+
+# Funcion SSE
+def get_players_by_draft_stream(request: HttpRequest, draft_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        draft = Draft.objects.get(id=draft_id)
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+    
+    if draft.status != DraftStatus.IN_PROGRESS:
+        return JsonResponse({'error': 'El Draft no ha comenzado'}, status=409)
+    
+
+    def event_stream():
+        last_players_data = None
+        while True:
+            players = DraftPlayer.objects.filter(draft=draft_id)
+            players_data = list(players.values())
+            if players_data != last_players_data:
+                last_players_data = players_data
+                json_data = json.dumps(players_data)
+                yield f"data: {json_data}\n\n"
+            time.sleep(2)
+
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    return response
 
 def start_draft(request: HttpRequest, draft_id):
     if request.method != 'PUT':
