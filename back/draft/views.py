@@ -104,23 +104,34 @@ def finish_draft(request: HttpRequest, draft_id):
 def acquire_player(request: HttpRequest, draft_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
+
+    try:
+        data = json.loads((request.body or b"{}").decode("utf-8")) or {}
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    draft_player_id = data.get('draft_player_id')
+    draft_user_id   = data.get('draft_user_id')
+    if not draft_player_id or not draft_user_id:
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+
     try:
         draft = Draft.objects.get(id=draft_id)
     except Draft.DoesNotExist:
         return JsonResponse({'error': 'Draft no encontrado'}, status=404)
 
+    from players.models import DraftPlayer
     try:
-        draft_player = DraftPlayer.objects.get(id=request.body['draft_player_id'])
-    except Draft.DoesNotExist:
-        return JsonResponse({'error': 'Player no encontrado'}, status=404)
-    
+        draft_player = DraftPlayer.objects.get(id=draft_player_id, draft=draft)
+    except DraftPlayer.DoesNotExist:
+        return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
+
+    from team.models import Team
     try:
-        team = Team.objects.get(draft=draft, draft_user=request.body['draft_user_id'])
-    except Draft.DoesNotExist:
-        return JsonResponse({'error': 'Player no encontrado'}, status=404)
-    
+        team = Team.objects.get(draft=draft, draft_user_id=draft_user_id)
+    except Team.DoesNotExist:
+        return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
+
     draft_player.team = team
     draft_player.save(update_fields=['team'])
-
     return JsonResponse({'message': 'Jugador adquirido correctamente'})
