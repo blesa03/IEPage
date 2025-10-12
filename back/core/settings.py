@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from corsheaders.defaults import default_headers, default_methods
 
 load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
@@ -154,12 +155,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     os.getenv("FRONT_ORIGIN", "http://localhost:5173"),
 ]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    "https://ie-page.vercel.app",
+]
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     os.getenv("FRONT_ORIGIN", "http://localhost:5173"),
-    "https://https://ie-page.vercel.app",
+    "https://ie-page.vercel.app",
     "https://iepage-1.onrender.com",
 ]
+
+CORS_ALLOW_HEADERS = list(default_headers) + ["X-CSRFToken", "Authorization", "Content-Type"]
+CORS_ALLOW_METHODS = list(default_methods)
 
 # Cookies de sesión para desarrollo
 SESSION_COOKIE_SECURE = True
