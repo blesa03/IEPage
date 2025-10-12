@@ -43,13 +43,12 @@ export default function Draft() {
       const raw = await getDraftPlayers(draftId);
       const list = raw.map(r => ({
         id: r.id,
-        order: r.order,
         clause: r.clause ?? 0,
         player: {
           id: r.player_id,
-          name: r.player__name,
-          position: r.player__position,
-          number: r.player__number,
+          name: r.name,
+          position: r.position,
+          element: r.element
         },
       }));
       setPlayers(list);
@@ -63,6 +62,40 @@ export default function Draft() {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [draftId]);
+
+  useEffect(() => {
+  if (notStarted) return;
+
+  const sseUrl = `${import.meta.env.VITE_API_URL}/draft/${draftId}/players/stream`;
+
+  const evtSource = new EventSource(sseUrl);
+
+  evtSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      const list = data.map(r => ({
+        id: r.id,
+        clause: r.clause ?? 0,
+        player: {
+          id: r.player_id,
+          name: r.name,
+          position: r.position,
+          element: r.element
+        },
+      }));
+      setPlayers(list);
+    } catch (err) {
+      console.error("Error parsing SSE data:", err);
+    }
+  };
+
+  evtSource.onerror = (err) => {
+    console.error("Error en conexión SSE:", err);
+    evtSource.close();
+  };
+
+  return () => evtSource.close();
+}, [draftId, notStarted]);
 
   const byPos = useMemo(() => {
     const map = { GK: [], DF: [], MF: [], FW: [] };

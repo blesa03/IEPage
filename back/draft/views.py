@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest, StreamingHttpResponse
-from players.models import DraftPlayer
+from players.models import DraftPlayer, Player
 from users.models import DraftUser
 from draft.models import Draft
 from draft.types import DraftStatus
@@ -26,8 +26,15 @@ def get_players_by_draft(request: HttpRequest, draft_id):
     if draft.status != DraftStatus.IN_PROGRESS:
         return JsonResponse({'error': 'El Draft no ha comenzado'}, status=409)
         
-    players = DraftPlayer.objects.filter(draft=draft_id)
+    players = DraftPlayer.objects.filter(draft=draft_id, team_id=None)
     data = list(players.values())
+    
+    players_response = []
+    for player in data:
+        player_instance = Player.objects.get(id=player['player_id'])
+        players_response.append(
+            {**player, 'position': player_instance.position, 'element': player_instance.element}
+        )
     
     return JsonResponse(data, safe=False)
 
@@ -48,11 +55,17 @@ def get_players_by_draft_stream(request: HttpRequest, draft_id):
     def event_stream():
         last_players_data = None
         while True:
-            players = DraftPlayer.objects.filter(draft=draft_id)
+            players = DraftPlayer.objects.filter(draft=draft_id, team_id=None)
             players_data = list(players.values())
             if players_data != last_players_data:
                 last_players_data = players_data
-                json_data = json.dumps(players_data, cls=DjangoJSONEncoder)
+                players_response = []
+                for player in players_data:
+                    player_instance = Player.objects.get(id=player['player_id'])
+                    players_response.append(
+                        {**player, 'position': player_instance.position, 'element': player_instance.element}
+                    )
+                json_data = json.dumps(players_response, cls=DjangoJSONEncoder)
                 yield f"data: {json_data}\n\n"
             time.sleep(2)
 

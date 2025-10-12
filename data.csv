@@ -63,7 +63,7 @@ Drakul,Earth,MF,./imgs/drakul.png,M
 Choi,Fire,MF,./imgs/choi.png,M
 Erik,Wood,MF,./imgs/erik.png,M
 Jordan,Wood,MF,./imgs/jordan.png,M
-Ricardo,None,DF,./imgs/ricardo.png,M
+Ricardo,None,MF,./imgs/ricardo.png,M
 Kiwill,Wood,MF,./imgs/kiwill.png,F
 Dooley,Earth,MF,./imgs/dooley.png,M
 Krueger,Wood,MF,./imgs/krueger.png,M
@@ -76,15 +76,15 @@ Mehr,Wind,MF,./imgs/mehr.png,F
 Ghiris,Fire,MF,./imgs/ghiris.png,M
 Hera,Fire,MF,./imgs/hera.png,M
 Layton,Earth,MF,./imgs/layton.png,M
-Luke,Wind,DF,./imgs/luke.png,M
+Luke,Wind,MF,./imgs/luke.png,M
 Spring,Fire,MF,./imgs/spring.png,M
-Neppten,Wood,FW,./imgs/neppten.png,M
+Neppten,Wood,MF,./imgs/neppten.png,M
 Heat,Wood,MF,./imgs/heat.png,M
 Icer,Wind,MF,./imgs/icer.png,F
-Rome,Wind,DF,./imgs/rome.png,M
+Rome,Wind,MF,./imgs/ryoma.png,M
 Maximino,Wind,MF,./imgs/maximino.png,M
 Acuto,Fire,MF,./imgs/acuto.png,M
-Dvalin,Fire,GK,./imgs/dvalin.png,M
+Dvalin,Fire,MF,./imgs/dvalin.png,M
 Kormer,Fire,MF,./imgs/kormer.png,M
 Heath,Wind,MF,./imgs/heath.png,M
 Laurel,Earth,MF,./imgs/laurel.png,M
@@ -95,7 +95,7 @@ Rhine,Wind,MF,./imgs/rhine.png,F
 Droll,Wind,MF,./imgs/droll.png,M
 Gabrini,Wind,MF,./imgs/gabrini.png,M
 Crowe,Wood,MF,./imgs/crowe.png,M
-Bomber,Fire,DF,./imgs/bomber.png,M
+Bomber,Fire,MF,./imgs/bomber.png,M
 Master,Wind,MF,./imgs/master.png,M
 Sierra,Wood,MF,./imgs/sierra.png,F
 Axel,Fire,FW,./imgs/axel.png,M
