@@ -11,7 +11,7 @@ from draft.models import Draft
 from players.models import Player, DraftPlayer
 from users.models import DraftUser
 from team.models import Team
-
+from decimal import Decimal
 
 class Command(BaseCommand):
     """
@@ -175,7 +175,7 @@ class Command(BaseCommand):
                             "position": (row.get("position") or "").strip(),
                             "element": (row.get("element") or "").strip(),
                             "sprite": (row.get("sprite") or "").strip(),
-                            "value": (row.get("value") or "").strip(),
+                            "value": Decimal(row.get("value", 0.0)) * 1000000,
                         },
                     )
                     if created_p:

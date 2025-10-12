@@ -33,7 +33,7 @@ def get_players_by_draft(request: HttpRequest, draft_id):
     for player in data:
         player_instance = Player.objects.get(id=player['player_id'])
         players_response.append(
-            {**player, 'position': player_instance.position, 'element': player_instance.element, 'sprite': player_instance.sprite.url if player_instance.sprite.url else None}
+            {**player, 'position': player_instance.position, 'element': player_instance.element, 'sprite': player_instance.sprite.url if player_instance.sprite.url else None, 'value': player_instance.value}
         )
     
     return JsonResponse(players_response, safe=False)
@@ -63,7 +63,7 @@ def get_players_by_draft_stream(request: HttpRequest, draft_id):
                 for player in players_data:
                     player_instance = Player.objects.get(id=player['player_id'])
                     players_response.append(
-                        {**player, 'position': player_instance.position, 'element': player_instance.element, 'sprite': player_instance.sprite.url if player_instance.sprite.url else None}
+                        {**player, 'position': player_instance.position, 'element': player_instance.element, 'sprite': player_instance.sprite.url if player_instance.sprite.url else None, 'value': player_instance.value}
                     )
                 json_data = json.dumps(players_response, cls=DjangoJSONEncoder)
                 yield f"data: {json_data}\n\n"

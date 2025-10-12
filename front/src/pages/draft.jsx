@@ -23,7 +23,7 @@ function PlayerRow({ item }) {
           <div className="text-xs text-white/60">{p.position} · Orden {item.order ?? "-"}</div>
         </div>
       </div>
-      <div className="text-sm font-semibold">{eur(item.clause)}</div>
+      <div className="text-sm font-semibold">{eur(item.value)}</div>
     </div>
   );
 }
@@ -69,12 +69,12 @@ export default function Draft() {
       const raw = await getDraftPlayers(draftId);
       const list = raw.map((r) => ({
         id: r.id,
-        clause: r.clause ?? 0,
         player: {
           id: r.player_id,
           name: r.name,
           position: r.position,
-          element: r.element
+          element: r.element,
+          value: r.value,
         },
       }));
       setPlayers(list);
@@ -107,12 +107,12 @@ export default function Draft() {
       const data = JSON.parse(event.data);
       const list = data.map(r => ({
         id: r.id,
-        clause: r.clause ?? 0,
         player: {
           id: r.player_id,
           name: r.name,
           position: r.position,
-          element: r.element
+          element: r.element,
+          value: r.value,
         },
       }));
       setPlayers(list);
