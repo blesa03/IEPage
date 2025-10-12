@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { login, me } from "../api";
+import { login, me, getCsrf } from "../api";
 
 export default function Login({ onLogged }) {
   const [form, setForm] = useState({ username: "", password: "" });
