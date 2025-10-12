@@ -179,7 +179,7 @@ def finish_draft(request: HttpRequest, draft_id):
 
     return JsonResponse({'message': 'Draft actualizado correctamente'})
 
-    
+@csrf_exempt
 def acquire_player(request: HttpRequest, draft_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -227,7 +227,7 @@ def acquire_player(request: HttpRequest, draft_id):
     
     users = list(DraftUser.objects.filter(draft=draft_id))
     
-    current_user = DraftUser.objects.get(draft=draft.current_draft_user)
+    current_user = DraftUser.objects.get(id=draft.current_draft_user.id)
     
     draft.current_draft_user = users[(current_user.order + 1) % len(users)]
     
