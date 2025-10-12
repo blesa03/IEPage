@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyLeagues, createLeague, getLeague } from "../api/league"; // ⬅️ añadimos getLeague
+import { getMyLeagues, createLeague, getLeague } from "../api/league";
 import { me } from "../api";
 
 export default function Home({ user, onLogout }) {
