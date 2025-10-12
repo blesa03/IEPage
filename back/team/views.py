@@ -37,7 +37,7 @@ def my_team(request: HttpRequest, draft_id):
                 'gender': player.player.gender,
                 'position': player.player.position,
                 'element': player.player.element,
-                'sprite': player.player.sprite,
+                'sprite': player.player.sprite.url if player.player.sprite else None,
                 'value': player.player.value,
             } for player in players
         ]
