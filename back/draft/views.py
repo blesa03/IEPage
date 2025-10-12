@@ -177,7 +177,7 @@ def start_draft(request: HttpRequest, draft_id):
     
     random.shuffle(users)
     
-    for i, draft_player in enumerate(users, start=1):
+    for i, draft_player in enumerate(users):
         draft_player.order = i
         draft_player.save(update_fields=['order'])
     
