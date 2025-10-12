@@ -16,7 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+@ensure_csrf_cookie
+def csrf_view(_request):
+    return JsonResponse({"detail": "ok"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,4 +30,5 @@ urlpatterns = [
     path('api/league/', include('league.urls')),
     path('api/team/', include('team.urls')),
     path('api/ranking/', include('ranking.urls')),
+    path("api/auth/csrf", csrf_view),
 ]

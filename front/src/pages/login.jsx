@@ -10,10 +10,11 @@ export default function Login({ onLogged }) {
     e.preventDefault();
     setErr("");
     try {
-      await login(form.username, form.password);
+      await getCsrf(); 
+      await login(form.username, form.password); 
       const data = await me();
       onLogged(data);
-    } catch {
+    } catch (e) {
       setErr("Credenciales inválidas");
     }
   };
