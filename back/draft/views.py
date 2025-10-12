@@ -225,12 +225,11 @@ def acquire_player(request: HttpRequest, draft_id):
     draft_player.team = team
     draft_player.save(update_fields=['team'])
     
-    users = list(DraftUser.objects.filter(draft=draft_id))
+    users = list(DraftUser.objects.filter(draft=draft_id).order_by('order'))
     
     current_user = DraftUser.objects.get(id=draft.current_draft_user.id)
     
     draft.current_draft_user = users[(current_user.order + 1) % len(users)]
-    
     draft.save(update_fields=['current_draft_user'])
     
     return JsonResponse({'message': 'Jugador adquirido correctamente'})
