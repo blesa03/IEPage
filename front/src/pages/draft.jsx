@@ -171,6 +171,37 @@ export default function Draft() {
   return () => evtSource.close();
 }, [draftId, notStarted]);
 
+useEffect(() => {
+  if (notStarted) return;
+
+  const sseUrl = `${import.meta.env.VITE_API_URL}/draft/${draftId}/stream`;
+
+  const evtSource = new EventSource(sseUrl);
+
+  evtSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      const draftData = {
+        id: data.id,
+        name: data.name,
+        current_user: data.current_user,
+        status: data.status
+      };
+      setDraftPlayer(draftData);
+
+    } catch (err) {
+      console.error("Error parsing SSE data:", err);
+    }
+  };
+
+  evtSource.onerror = (err) => {
+    console.error("Error en conexión SSE:", err);
+    evtSource.close();
+  };
+
+  return () => evtSource.close();
+}, [draftId, notStarted]);
+
   const byPos = useMemo(() => {
     const map = { GK: [], DF: [], MF: [], FW: [] };
     for (const it of players) map[it.player.position]?.push(it);
