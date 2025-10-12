@@ -15,7 +15,7 @@ function PlayerRow({ item, onSelect, selecting }) {
     >
       <div className="relative w-full h-40 bg-white/5">
         <img
-          src={`http://localhost:3000${p.sprite}`}
+          src={`${import.meta.env.VITE_API_URL}${p.sprite}`}
           alt={p.name}
           className="absolute inset-0 w-full h-full object-contain p-4"
         />
