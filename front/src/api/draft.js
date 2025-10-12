@@ -7,3 +7,4 @@ export const getDraftPlayers = async (draftId) => {
 
 export const startDraft  = (draftId) => api.put(`/draft/${draftId}/start`);
 export const finishDraft = (draftId) => api.put(`/draft/${draftId}/finish`);
+export const selectPlayer = (draftId,playerId) => api.put(`/draft/${draftId}/player/${playerId}`);

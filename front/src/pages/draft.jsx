@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getDraftPlayers, startDraft, finishDraft } from "../api/draft";
+import { getDraftPlayers, startDraft, finishDraft,selectPlayer } from "../api/draft";
 
 const POS_LABEL = { GK: "Porteros", DF: "Defensas", MF: "Centrocampistas", FW: "Delanteros" };
 const eur = (n = 0) =>
   new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
-function PlayerRow({ item }) {
+function PlayerRow({ item, onSelect }) {
   const p = item.player || {};
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
@@ -20,16 +20,26 @@ function PlayerRow({ item }) {
         </div>
         <div>
           <div className="font-semibold leading-tight">{p.name}</div>
-          <div className="text-xs text-white/60">{p.position} · Orden {item.order ?? "-"}</div>
+          <div className="text-xs text-white/60">{p.position} · Orden {p.order ?? "-"}</div>
         </div>
       </div>
-      <div className="text-sm font-semibold">{eur(item.value)}</div>
-    </div>
+      <div className="text-sm font-semibold">{eur(p.value)}</div>
+     <button
+        onClick={() => onSelect(p.id)}
+        disabled={selecting}
+        className={`rounded-md px-2 py-1 text-sm font-semibold transition ${
+          selecting ? "opacity-50 cursor-not-allowed" : "bg-cyan-400/20 hover:bg-cyan-400/30"
+        }`}
+      >
+        {selecting ? "Drafteando…" : "Draftearlo"}
+      </button>
+      </div>
   );
 }
 
 export default function Draft() {
   const { draftId } = useParams();
+  const { playerId } = useParams();
   const nav = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -38,6 +48,7 @@ export default function Draft() {
   const [notStarted, setNotStarted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [selecting, setSelecting] = useState(false);
 
   // 👇 opción rápida: tomar el rol de la liga desde localStorage
   const [isOwner, setIsOwner] = useState(() => {
@@ -162,6 +173,18 @@ export default function Draft() {
     }
   };
 
+const onSelect = async (playerId) => {
+  setSelecting(true);
+  setError("");
+  try {
+    await selectPlayer(draftId, playerId);
+    await load();
+  } catch (e) {
+    setError(e?.response?.data?.error || e.message || "No se pudo seleccionar el jugador");
+  } finally {
+    setSelecting(false);
+  }
+};
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-8">
       {/* Encabezado con botón Volver */}
@@ -233,7 +256,7 @@ export default function Draft() {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                   {byPos[pos].map((it) => (
-                    <PlayerRow key={it.id} item={it} />
+                    <PlayerRow key={it.id} item={it} onSelect={onSelect} />
                   ))}
                 </div>
               )}
