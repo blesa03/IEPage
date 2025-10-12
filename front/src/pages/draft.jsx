@@ -6,25 +6,32 @@ const POS_LABEL = { GK: "Porteros", DF: "Defensas", MF: "Centrocampistas", FW: "
 const eur = (n = 0) =>
   new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
-function PlayerRow({ item, onSelect }) {
+function PlayerRow({ item, onSelect, selecting }) {
   const p = item.player || {};
+
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 grid place-items-center rounded-md bg-white/10 border border-white/10 overflow-hidden">
           {p.sprite ? (
-            <img src={p.sprite} alt={p.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-sm">?</span>
-          )}
+          <img
+            src={p.sprite}
+            alt={p.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-sm">?</span>
+        )}
         </div>
         <div>
           <div className="font-semibold leading-tight">{p.name}</div>
           <div className="text-xs text-white/60">{p.position} · Orden {p.order ?? "-"}</div>
         </div>
       </div>
+
       <div className="text-sm font-semibold">{eur(p.value)}</div>
-     <button
+
+      <button
         onClick={() => onSelect(p.id)}
         disabled={selecting}
         className={`rounded-md px-2 py-1 text-sm font-semibold transition ${
@@ -33,9 +40,10 @@ function PlayerRow({ item, onSelect }) {
       >
         {selecting ? "Drafteando…" : "Draftearlo"}
       </button>
-      </div>
+    </div>
   );
 }
+
 
 export default function Draft() {
   const { draftId } = useParams();
@@ -256,7 +264,7 @@ const onSelect = async (playerId) => {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
                   {byPos[pos].map((it) => (
-                    <PlayerRow key={it.id} item={it} onSelect={onSelect} />
+                    <PlayerRow key={it.id} item={it} onSelect={onSelect} selecting={selecting} />
                   ))}
                 </div>
               )}
