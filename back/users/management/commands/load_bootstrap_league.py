@@ -45,11 +45,11 @@ class Command(BaseCommand):
             help="Ruta al CSV de jugadores (columnas: name,gender,position,element,sprite)."
         )
         parser.add_argument(
-            "--league-name", type=str, default="Nombre prueba",
+            "--league-name", type=str, default="Primera Liga Inazuma",
             help="Nombre de la liga a crear (si no hay --draft-id)."
         )
         parser.add_argument(
-            "--draft-name", type=str, default="Draft de prueba",
+            "--draft-name", type=str, default="Draft",
             help="Nombre del draft a crear (si no hay --draft-id)."
         )
         parser.add_argument(
