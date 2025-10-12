@@ -32,6 +32,7 @@ class Command(BaseCommand):
         {"username": "Daniwellingssss", "team_name": "Manchester Dani",     "password": "]q&U376]!{jx"},
         {"username": "Franchesco",      "team_name": "Los barbaros",        "password": "ORo29!T]7iCs"},
         {"username": "Sorey",           "team_name": "TIRES",               "password": "8[o%CvB86riK"},
+        {"username": "lojnoe",          "team_name": "Barrio Alto",        "password": "8[o%CvB26riK"},
     ]
 
     def add_arguments(self, parser):

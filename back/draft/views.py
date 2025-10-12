@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest, StreamingHttpResponse
 from players.models import DraftPlayer, Player
-from users.models import DraftUser
+from users.models import DraftUser, User
 from draft.models import Draft
 from draft.types import DraftStatus
 from team.models import Team
@@ -13,7 +13,68 @@ from django.core.serializers.json import DjangoJSONEncoder
 from players.models import DraftPlayer
 from team.models import Team
 
-# TODO: Eliminar y mantener el SSE
+
+def view_draft(request: HttpRequest, draft_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        draft = Draft.objects.get(id=draft_id)
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+    
+    try:
+        user = User.objects.get(id=draft.current_draft_user.id)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
+    return JsonResponse(
+        {
+            'id': draft.id,
+            'name': draft.name,
+            'current_user': user.username,
+            'status': draft.status    
+        }, 
+        safe=False)
+
+def view_draft_stream(request: HttpRequest, draft_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    
+    def event_stream():
+        last_draft_user = None
+        while True:
+            try:
+                draft = Draft.objects.get(id=draft_id)
+            except Draft.DoesNotExist:
+                return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+            
+            if draft.current_draft_user != last_draft_user:
+                last_draft_user = draft.current_draft_user
+                
+                try:
+                    user = User.objects.get(id=draft.current_draft_user.id)
+                except User.DoesNotExist:
+                    return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+                
+                response_data = {
+                    'id': draft.id,
+                    'name': draft.name,
+                    'current_user': user.username,
+                    'status': draft.status    
+                }
+                
+                
+                json_data = json.dumps(response_data, cls=DjangoJSONEncoder)
+                yield f"data: {json_data}\n\n"
+            time.sleep(2)
+    
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
 def get_players_by_draft(request: HttpRequest, draft_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -138,18 +199,21 @@ def acquire_player(request: HttpRequest, draft_id):
         draft = Draft.objects.get(id=draft_id)
     except Draft.DoesNotExist:
         return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+    
+    # Sacamos el usuario del draft
+    try:
+        draft_user = DraftUser.objects.get(draft=draft, user=request.user)
+    except DraftUser.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
+    if draft.current_draft_user != draft_user:
+        return JsonResponse({'error': 'No es tu turno'}, status=409)
 
     # Sacamos el jugador de draft
     try:
         draft_player = DraftPlayer.objects.get(id=draft_player_id)
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
-
-    # Sacamos el usuario del draft
-    try:
-        draft_user = DraftUser.objects.get(draft=draft, user=request.user)
-    except Team.DoesNotExist:
-        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
     # Sacamos el equipo
     try:
@@ -160,5 +224,13 @@ def acquire_player(request: HttpRequest, draft_id):
     # Actualizamos
     draft_player.team = team
     draft_player.save(update_fields=['team'])
+    
+    users = list(DraftUser.objects.filter(draft=draft_id))
+    
+    current_user = DraftUser.objects.get(draft=draft.current_draft_user)
+    
+    draft.current_draft_user = users[(current_user.order + 1) % len(users)]
+    
+    draft.save(update_fields=['current_draft_user'])
     
     return JsonResponse({'message': 'Jugador adquirido correctamente'})
