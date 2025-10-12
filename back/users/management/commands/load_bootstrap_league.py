@@ -175,6 +175,7 @@ class Command(BaseCommand):
                             "position": (row.get("position") or "").strip(),
                             "element": (row.get("element") or "").strip(),
                             "sprite": (row.get("sprite") or "").strip(),
+                            "value": (row.get("value") or "").strip(),
                         },
                     )
                     if created_p:
