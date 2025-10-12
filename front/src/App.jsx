@@ -10,6 +10,10 @@ import Register from "./pages/register";
 import League from "./pages/league";
 import { me, logout } from "./api";
 
+const ProtectedRoute = ({ user, children }) => {
+  return user ? children : <Navigate to="/login" replace />;
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [loadingMe, setLoadingMe] = useState(true);
@@ -31,21 +35,63 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home user={user} onLogout={onLogout} />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute user={user}>
+              <Home user={user} onLogout={onLogout} />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/login"
-          element={user ? <Navigate to="/" /> : <Login onLogged={setUser} />}
+          element={user ? <Navigate to="/" replace /> : <Login onLogged={setUser} />}
         />
         <Route
           path="/register"
-          element={user ? <Navigate to="/" /> : <Register onRegistered={setUser} />}
+          element={user ? <Navigate to="/" replace /> : <Register onRegistered={setUser} />}
         />
-        <Route path="/league/:leagueId" element={<League />} />
-        <Route path="/draft/:draftId" element={<Draft />} />
-        <Route path="/ranking" element={<Ranking />} />
-        <Route path="/team" element={<Team />} />
-        <Route path="/market" element={<Market />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route
+          path="/league/:leagueId"
+          element={
+            <ProtectedRoute user={user}>
+              <League />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/draft/:draftId"
+          element={
+            <ProtectedRoute user={user}>
+              <Draft />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ranking"
+          element={
+            <ProtectedRoute user={user}>
+              <Ranking />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/team"
+          element={
+            <ProtectedRoute user={user}>
+              <Team />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/market"
+          element={
+            <ProtectedRoute user={user}>
+              <Market />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

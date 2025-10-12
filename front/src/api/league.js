@@ -12,3 +12,5 @@ export const createLeague = async (name) => {
   const res = await api.post("/league/create", { name });
   return res.data; // { id, name, ... }
 };
+
+export const getLeague = async (id) => (await api.get(`/league/${id}`)).data;
