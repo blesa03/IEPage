@@ -201,12 +201,6 @@ export default function Draft() {
           >
             {finishing ? "Finalizando…" : "Finalizar draft"}
           </button>
-          <button
-            onClick={load}
-            className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 hover:bg-white/15"
-          >
-            Recargar
-          </button>
         </div>
       </header>
 
