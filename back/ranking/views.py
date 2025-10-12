@@ -1,5 +1,4 @@
 from django.shortcuts import render
-from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest
 from team.models import Team
 from draft.models import Draft
