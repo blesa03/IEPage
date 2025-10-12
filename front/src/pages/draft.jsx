@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getDraftPlayers, startDraft, finishDraft } from "../api/draft";
 
 const POS_LABEL = { GK: "Porteros", DF: "Defensas", MF: "Centrocampistas", FW: "Delanteros" };
-const eur = (n=0) => new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n);
+const eur = (n = 0) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
 function PlayerRow({ item }) {
   const p = item.player || {};
@@ -30,6 +31,7 @@ function PlayerRow({ item }) {
 export default function Draft() {
   const { draftId } = useParams();
   const nav = useNavigate();
+
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState([]);
   const [error, setError] = useState("");
@@ -37,11 +39,35 @@ export default function Draft() {
   const [starting, setStarting] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
+  // 👇 opción rápida: tomar el rol de la liga desde localStorage
+  const [isOwner, setIsOwner] = useState(() => {
+    try {
+      const saved = localStorage.getItem("selectedLeague");
+      const league = saved ? JSON.parse(saved) : null;
+      return league?.role === "owner";
+    } catch {
+      return false;
+    }
+  });
+
+  // Recalcular si cambia el draft (p.ej., otra liga seleccionada previamente)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("selectedLeague");
+      const league = saved ? JSON.parse(saved) : null;
+      setIsOwner(league?.role === "owner");
+    } catch {
+      setIsOwner(false);
+    }
+  }, [draftId]);
+
   async function load() {
-    setLoading(true); setError(""); setNotStarted(false);
+    setLoading(true);
+    setError("");
+    setNotStarted(false);
     try {
       const raw = await getDraftPlayers(draftId);
-      const list = raw.map(r => ({
+      const list = raw.map((r) => ({
         id: r.id,
         clause: r.clause ?? 0,
         player: {
@@ -53,15 +79,21 @@ export default function Draft() {
       }));
       setPlayers(list);
     } catch (e) {
-      if (e.status === 409) setNotStarted(true);
-      else setError(e.message || "Error al cargar jugadores");
+      const status = e?.response?.status;
+      if (status === 409) setNotStarted(true);
+      else if (status === 401) setError("No autenticado. Inicia sesión.");
+      else if (status === 403) setError("No autorizado para ver este draft.");
+      else setError(e?.response?.data?.error || e.message || "Error al cargar jugadores");
       setPlayers([]);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [draftId]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line
+  }, [draftId]);
 
   useEffect(() => {
   if (notStarted) return;
@@ -100,22 +132,34 @@ export default function Draft() {
   const byPos = useMemo(() => {
     const map = { GK: [], DF: [], MF: [], FW: [] };
     for (const it of players) map[it.player.position]?.push(it);
-    for (const k of Object.keys(map)) map[k].sort((a,b)=>(a.order??1e9)-(b.order??1e9));
+    for (const k of Object.keys(map)) map[k].sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
     return map;
   }, [players]);
 
   const onStart = async () => {
-    setStarting(true); setError("");
-    try { await startDraft(draftId); await load(); } 
-    catch (e) { setError(e.message || "No se pudo iniciar el draft"); }
-    finally { setStarting(false); }
+    setStarting(true);
+    setError("");
+    try {
+      await startDraft(draftId);
+      await load();
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message || "No se pudo iniciar el draft");
+    } finally {
+      setStarting(false);
+    }
   };
 
   const onFinish = async () => {
-    setFinishing(true); setError("");
-    try { await finishDraft(draftId); } 
-    catch (e) { setError(e.message || "No se pudo finalizar el draft"); }
-    finally { setFinishing(false); }
+    setFinishing(true);
+    setError("");
+    try {
+      await finishDraft(draftId);
+      await load();
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message || "No se pudo finalizar el draft");
+    } finally {
+      setFinishing(false);
+    }
   };
 
   return (
@@ -130,19 +174,29 @@ export default function Draft() {
         </button>
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-3xl font-extrabold tracking-tight">Draft</h1>
-          <p className="text-white/70">Inicia el draft para asignar orden y ver a los jugadores por posición.</p>
+          <p className="text-white/70">
+            Inicia el draft para asignar orden y ver a los jugadores por posición.
+          </p>
         </div>
         <div className="flex items-center gap-2 mt-2 sm:mt-0">
           <button
             onClick={onStart}
-            disabled={starting}
+            disabled={starting || !isOwner}
+            title={!isOwner ? "Solo el dueño de la liga puede iniciar el draft" : undefined}
             className="rounded-lg bg-cyan-400 text-black px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
           >
             {starting ? "Iniciando…" : "Iniciar draft"}
           </button>
           <button
             onClick={onFinish}
-            disabled={finishing}
+            disabled={finishing || !isOwner || notStarted}
+            title={
+              !isOwner
+                ? "Solo el dueño de la liga puede finalizar el draft"
+                : notStarted
+                ? "El draft aún no ha comenzado"
+                : undefined
+            }
             className="rounded-lg bg-red-500 text-white px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
           >
             {finishing ? "Finalizando…" : "Finalizar draft"}
@@ -172,7 +226,7 @@ export default function Draft() {
         <div className="mx-auto max-w-6xl text-white/70">Cargando…</div>
       ) : (
         <div className="mx-auto max-w-6xl grid gap-6">
-          {(["GK","DF","MF","FW"]).map(pos => (
+          {["GK", "DF", "MF", "FW"].map((pos) => (
             <section key={pos} className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <div className="mb-3 flex items-center gap-2">
                 <h2 className="text-xl font-bold">{POS_LABEL[pos]}</h2>
@@ -184,7 +238,9 @@ export default function Draft() {
                 <div className="text-white/60">No hay jugadores en esta posición.</div>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-                  {byPos[pos].map(it => <PlayerRow key={it.id} item={it} />)}
+                  {byPos[pos].map((it) => (
+                    <PlayerRow key={it.id} item={it} />
+                  ))}
                 </div>
               )}
             </section>

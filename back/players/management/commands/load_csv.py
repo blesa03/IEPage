@@ -11,7 +11,8 @@ class Command(BaseCommand):
             reader = csv.DictReader(file)
 
             league = League.objects.create(
-                name='Nombre prueba'
+                name='Nombre prueba',
+                owner=1
             )
 
             draft = Draft.objects.create(

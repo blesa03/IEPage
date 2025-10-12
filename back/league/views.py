@@ -1,6 +1,7 @@
 from django.http import JsonResponse, HttpRequest
 from users.models import DraftUser
 from .models import League
+from draft.models import Draft
 import json
 
 def _me(request):
@@ -20,24 +21,38 @@ def my_leagues(request: HttpRequest):
     if isinstance(user, JsonResponse):
         return user
 
-    # 1) Ligas donde es owner
-    owner_qs = League.objects.filter(owner=user).values('id', 'name')
+    uid = int(user.id)  # comparar por ID, sin instancias
 
-    # 2) Ligas donde participa vía DraftUser (agrupando por liga), excluyendo las que ya es owner
-    part_league_ids = (
+    # 1) IDs de ligas donde es owner
+    owner_ids = set(
+        League.objects.filter(owner_id=uid).values_list('id', flat=True)
+    )
+
+    # 2) IDs de ligas donde participa (vía cualquier DraftUser suyo)
+    participant_ids = set(
         DraftUser.objects
-        .filter(user=user)
+        .filter(user_id=uid)  # por ID, no por instancia
         .values_list('draft__league_id', flat=True)
         .distinct()
     )
-    participant_qs = League.objects.filter(id__in=part_league_ids).exclude(owner=user).values('id', 'name')
 
-    # Opcional: ordenar por rol y nombre
-    data = (
-        [{'id': lg['id'], 'name': lg['name'], 'role': 'owner'} for lg in owner_qs] +
-        [{'id': lg['id'], 'name': lg['name'], 'role': 'player'} for lg in participant_qs]
-    )
-    # data.sort(key=lambda x: (0 if x['role']=='owner' else 1, x['name'].lower()))
+    data = []
+
+    # Primero owner (tienen prioridad)
+    for lid, name in (
+        League.objects.filter(id__in=owner_ids).values_list('id', 'name')
+    ):
+        data.append({'id': lid, 'name': name, 'role': 'owner'})
+
+    # Luego player (excluyendo las que ya es owner)
+    for lid, name in (
+        League.objects.filter(id__in=(participant_ids - owner_ids)).values_list('id', 'name')
+    ):
+        data.append({'id': lid, 'name': name, 'role': 'player'})
+
+    print("DEBUG /league/mine uid=", uid,
+      "owner_ids=", list(owner_ids),
+      "participant_ids=", list(participant_ids))
 
     return JsonResponse(data, safe=False)
 
@@ -73,7 +88,7 @@ def get_league(request: HttpRequest, league_id: int):
         return user
 
     try:
-        league = League.objects.select_related('owner').get(id=league_id)  # 🔍 evita N+1
+        league = League.objects.select_related('owner').get(id=league_id)
     except League.DoesNotExist:
         return JsonResponse({'error': 'No encontrado'}, status=404)
 
@@ -83,7 +98,7 @@ def get_league(request: HttpRequest, league_id: int):
     if not (is_owner or is_participant):
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
-    # Miembros = usuarios que aparecen en DraftUser de cualquier draft de esta liga (distinct por user)
+    # Miembros: usuarios distintos que aparecen en DraftUser de cualquier draft de la liga
     members_qs = (
         DraftUser.objects
         .filter(draft__league_id=league.id)
@@ -92,11 +107,18 @@ def get_league(request: HttpRequest, league_id: int):
     )
     members = [{'id': row['user_id'], 'username': row['user__username']} for row in members_qs]
 
+    # Draft actual: prioriza IN_PROGRESS; si no hay, el último creado
+    current = (
+        Draft.objects.filter(league=league, status='IN_PROGRESS').first()
+        or Draft.objects.filter(league=league).order_by('-id').first()
+    )
+
     payload = {
         'id': league.id,
         'name': league.name,
         'owner': {'id': league.owner_id, 'username': getattr(league.owner, 'username', None)},
         'members': members,
         'role': 'owner' if is_owner else 'player',
+        'currentDraftId': current.id if current else None,
     }
     return JsonResponse(payload)
