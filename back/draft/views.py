@@ -10,6 +10,8 @@ import random
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.core.serializers.json import DjangoJSONEncoder
+from players.models import DraftPlayer
+from team.models import Team
 
 # TODO: Eliminar y mantener el SSE
 def get_players_by_draft(request: HttpRequest, draft_id):
@@ -83,7 +85,7 @@ def start_draft(request: HttpRequest, draft_id):
         draft_player.save(update_fields=['order'])
     
     draft.current_draft_user = users[0]
-    draft.save(update_fields=['current_draft_player'])
+    draft.save(update_fields=['current_draft_user'])
 
     return JsonResponse({'message': 'Draft actualizado correctamente'})
     
@@ -114,27 +116,36 @@ def acquire_player(request: HttpRequest, draft_id):
         return JsonResponse({'error': 'JSON inválido'}, status=400)
 
     draft_player_id = data.get('draft_player_id')
-    draft_user_id   = data.get('draft_user_id')
-    if not draft_player_id or not draft_user_id:
+    
+    if not draft_player_id:
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
 
+    # Sacamos la instancia de draft
     try:
         draft = Draft.objects.get(id=draft_id)
     except Draft.DoesNotExist:
         return JsonResponse({'error': 'Draft no encontrado'}, status=404)
 
-    from players.models import DraftPlayer
+    # Sacamos el jugador de draft
     try:
-        draft_player = DraftPlayer.objects.get(id=draft_player_id, draft=draft)
+        draft_player = DraftPlayer.objects.get(id=draft_player_id)
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
 
-    from team.models import Team
+    # Sacamos el usuario del draft
     try:
-        team = Team.objects.get(draft=draft, draft_user_id=draft_user_id)
+        draft_user = DraftUser.objects.get(draft=draft, user=request.user)
+    except Team.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
+    # Sacamos el equipo
+    try:
+        team = Team.objects.get(draft=draft, draft_user=draft_user)
     except Team.DoesNotExist:
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
 
+    # Actualizamos
     draft_player.team = team
     draft_player.save(update_fields=['team'])
+    
     return JsonResponse({'message': 'Jugador adquirido correctamente'})
