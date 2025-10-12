@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { login, me, getCsrf } from "../api";
+import { login, me } from "../api"; // Ya no necesitas llamar getCsrf explícitamente
 
 export default function Login({ onLogged }) {
   const [form, setForm] = useState({ username: "", password: "" });
@@ -10,12 +10,15 @@ export default function Login({ onLogged }) {
     e.preventDefault();
     setErr("");
     try {
-      await getCsrf(); 
-      await login(form.username, form.password); 
+      // login ya llama getCsrf internamente
+      await login(form.username, form.password);
+
+      // obtener info del usuario autenticado
       const data = await me();
       onLogged(data);
     } catch (e) {
       setErr("Credenciales inválidas");
+      console.error(e);
     }
   };
 
