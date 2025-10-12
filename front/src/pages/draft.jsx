@@ -8,20 +8,15 @@ const eur = (n = 0) =>
 
 function PlayerRow({ item, onSelect, selecting }) {
   const p = item.player || {};
-
   return (
     <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 grid place-items-center rounded-md bg-white/10 border border-white/10 overflow-hidden">
-          {p.sprite ? (
           <img
-            src={p.sprite}
+            src={`http://localhost:3000${p.sprite}`}
             alt={p.name}
             className="w-full h-full object-cover"
           />
-        ) : (
-          <span className="text-sm">?</span>
-        )}
         </div>
         <div>
           <div className="font-semibold leading-tight">{p.name}</div>
@@ -94,6 +89,7 @@ export default function Draft() {
           position: r.position,
           element: r.element,
           value: r.value,
+          sprite: r.sprite
         },
       }));
       setPlayers(list);
@@ -132,6 +128,7 @@ export default function Draft() {
           position: r.position,
           element: r.element,
           value: r.value,
+          sprite: r.sprite
         },
       }));
       setPlayers(list);
