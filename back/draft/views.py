@@ -8,6 +8,8 @@ from team.models import Team
 import time
 import random
 import json
+from django.views.decorators.csrf import csrf_exempt
+from django.core.serializers.json import DjangoJSONEncoder
 
 # TODO: Eliminar y mantener el SSE
 def get_players_by_draft(request: HttpRequest, draft_id):
@@ -48,7 +50,7 @@ def get_players_by_draft_stream(request: HttpRequest, draft_id):
             players_data = list(players.values())
             if players_data != last_players_data:
                 last_players_data = players_data
-                json_data = json.dumps(players_data)
+                json_data = json.dumps(players_data, cls=DjangoJSONEncoder)
                 yield f"data: {json_data}\n\n"
             time.sleep(2)
 
@@ -56,6 +58,7 @@ def get_players_by_draft_stream(request: HttpRequest, draft_id):
     response['Cache-Control'] = 'no-cache'
     return response
 
+@csrf_exempt
 def start_draft(request: HttpRequest, draft_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
