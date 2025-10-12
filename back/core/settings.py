@@ -157,7 +157,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     os.getenv("FRONT_ORIGIN", "http://localhost:5173"),
-    "https://*.vercel.app",
+    "https://https://ie-page.vercel.app",
     "https://iepage-1.onrender.com",
 ]
 
