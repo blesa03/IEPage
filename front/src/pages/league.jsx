@@ -6,7 +6,6 @@ export default function League() {
   const { leagueId } = useParams();
   const nav = useNavigate();
 
-  // Carga inicial desde cache (si existe) para no parpadear el nombre
   const [league, setLeague] = useState(() => {
     const saved = localStorage.getItem("selectedLeague");
     try {
@@ -19,7 +18,6 @@ export default function League() {
   const [loading, setLoading] = useState(!league);
   const [error, setError] = useState("");
 
-  // Fetch real al backend
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -29,7 +27,6 @@ export default function League() {
       .then((data) => {
         if (!alive) return;
         setLeague(data);
-        // refrescamos la cache local
         localStorage.setItem("selectedLeague", JSON.stringify(data));
       })
       .catch((e) => {
@@ -127,7 +124,13 @@ export default function League() {
             <div className="text-white/70 mt-1">Próximamente</div>
           </button>
         )}
-
+        <Link
+          to={`/team/${league.currentDraftId}`}
+          className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
+        >
+          <div className="text-xl font-semibold">Mi equipo</div>
+          <div className="text-white/70 mt-1">Visualiza tu plantilla</div>
+        </Link>
         <Link
           to={`/ranking/${league.id}`}
           className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
@@ -136,15 +139,9 @@ export default function League() {
           <div className="text-white/70 mt-1">Estadísticas y posiciones</div>
         </Link>
 
-        {/* <Link
-          to="/team"
-          className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
-        >
-          <div className="text-xl font-semibold">Mi equipo</div>
-          <div className="text-white/70 mt-1">Visualiza tu plantilla</div>
-        </Link>
+        
 
-        <Link
+        {/* <Link
           to="/market"
           className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
         >

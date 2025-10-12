@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {viewRanking } from "../api/ranking";
+import { viewRanking } from "../api/ranking";
+
 export default function Ranking() {
   const nav = useNavigate();
   const { leagueId } = useParams();
@@ -17,12 +18,7 @@ export default function Ranking() {
       setError("");
       try {
         const data = await viewRanking(leagueId);
-        setTeams(data.teams ?? []);
-        setStats({
-          goles: data.goles ?? [],
-          asistencias: data.asistencias ?? [],
-          golesEncajados: data.golesEncajados ?? [],
-        });
+        setTeams(data ?? []);
       } catch (e) {
         setError("No se pudo cargar el ranking.");
       } finally {
@@ -33,9 +29,22 @@ export default function Ranking() {
     load();
   }, [leagueId]);
 
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen text-white">
+      Cargando ranking…
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex items-center justify-center min-h-screen text-red-400">
+      {error}
+    </div>
+  );
+
   return (
-    <main className="p-8 bg-slate-950 min-h-screen text-white">
-      <div className="flex items-center justify-between mb-6">
+    <main className="p-5 bg-slate-950 min-h-screen text-white">
+      {/* Header */}
+      <div className="max-w-6xl mx-auto mb-6 flex items-center justify-between">
         <button
           onClick={() => nav(-1)}
           className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
@@ -43,95 +52,64 @@ export default function Ranking() {
           ← Volver
         </button>
         <h1 className="text-3xl font-bold text-center flex-1">Clasificación</h1>
-        <div className="w-20"></div>
+        <div className="w-20" />
       </div>
 
-      {loading ? (
-        <div className="text-center text-white/70">Cargando ranking…</div>
-      ) : error ? (
-        <div className="text-center text-red-400">{error}</div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          {/* Clasificación de la liga */}
-          <div className="bg-white/5 rounded-2xl p-6 shadow-md hover:bg-white/10 transition">
-            <h2 className="text-xl font-semibold mb-4">Clasificación de la liga</h2>
-            <table className="w-full text-left text-white/80">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Equipo</th>
-                  <th>Pts</th>
-                  <th>G</th>
-                  <th>E</th>
-                  <th>P</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teams.map((team, idx) => (
-                  <tr key={idx} className="border-t border-white/10">
-                    <td>{idx + 1}</td>
-                    <td>{team.name}</td>
-                    <td>{team.pts}</td>
-                    <td>{team.wins}</td>
-                    <td>{team.draws}</td>
-                    <td>{team.losses}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Ranking de estadísticas */}
-          <div className="bg-white/5 rounded-2xl p-6 shadow-md hover:bg-white/10 transition">
-            <h2 className="text-xl font-semibold mb-4">Clasificación de estadísticas</h2>
-
-            <div className="flex gap-4 mb-4">
-              {["goles", "asistencias", "golesEncajados"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setStatTab(tab)}
-                  className={`px-3 py-1 rounded-lg font-medium ${
-                    statTab === tab
-                      ? "bg-yellow-400 text-black"
-                      : "bg-white/10 text-white/70"
-                  } transition`}
-                >
-                  {tab === "goles"
-                    ? "Goles"
-                    : tab === "asistencias"
-                    ? "Asistencias"
-                    : "Goles encajados"}
-                </button>
-              ))}
-            </div>
-
-            <table className="w-full text-left text-white/80">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Jugador</th>
-                  <th>
-                    {statTab === "goles"
-                      ? "Goles"
-                      : statTab === "asistencias"
-                      ? "Asistencias"
-                      : "Goles encajados"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats[statTab]?.map((item, idx) => (
-                  <tr key={idx} className="border-t border-white/10">
-                    <td>{idx + 1}</td>
-                    <td>{item.player}</td>
-                    <td>{item.value}</td>
-                  </tr>
-                )) ?? <tr><td colSpan={3}>No hay datos</td></tr>}
-              </tbody>
-            </table>
-          </div>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Bloques de equipos */}
+        <div className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition">
+          <h2 className="text-xl font-semibold mb-2 text-center">Clasificación de la liga</h2>
+          <ul className="space-y-2">
+            {teams.map((team, idx) => (
+              <li key={idx} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
+                <span className="font-medium">{idx + 1}. {team.name}</span>
+                <div className="flex gap-4 text-white/60">
+                  <span>Pts: {team.points}</span>
+                  <span>G: {team.wins}</span>
+                  <span>E: {team.draws}</span>
+                  <span>P: {team.losses}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
+
+        {/* Bloques de estadísticas */}
+        <div className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition">
+          <h2 className="text-xl font-semibold mb-4 text-center">Clasificación de estadísticas</h2>
+
+          <div className="flex gap-4 mb-4 justify-center">
+            {["goles", "asistencias", "golesEncajados"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setStatTab(tab)}
+                className={`px-3 py-1 rounded-lg font-medium ${
+                  statTab === tab
+                    ? "bg-yellow-400 text-black"
+                    : "bg-white/10 text-white/70"
+                } transition`}
+              >
+                {tab === "goles"
+                  ? "Goles"
+                  : tab === "asistencias"
+                  ? "Asistencias"
+                  : "Goles encajados"}
+              </button>
+            ))}
+          </div>
+
+          <ul className="space-y-2">
+            {stats[statTab]?.length > 0 ? stats[statTab].map((item, idx) => (
+              <li key={idx} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
+                <span>{idx + 1}. {item.player}</span>
+                <span className="text-white/60">{item.value}</span>
+              </li>
+            )) : (
+              <li className="text-center text-white/60">No hay datos</li>
+            )}
+          </ul>
+        </div>
+      </div>
     </main>
   );
 }

@@ -217,7 +217,7 @@ const onSelect = async (playerId) => {
   }
 };
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-8">
+    <main className="min-h-[calc(100vh-4rem)] px-6 py-8">
       {/* Encabezado con botón Volver */}
       <header className="mx-auto max-w-6xl mb-6 flex flex-col gap-3 sm:flex-row sm:items-center justify-between">
         <button

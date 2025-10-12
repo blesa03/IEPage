@@ -76,7 +76,7 @@ export default function App() {
           }
         />
         <Route
-          path="/team"
+          path="/team/:draftId"
           element={
             <ProtectedRoute user={user}>
               <Team />
