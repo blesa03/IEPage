@@ -232,30 +232,26 @@ const onSelect = async (playerId) => {
             Inicia el draft para asignar orden y ver a los jugadores por posición.
           </p>
         </div>
-        <div className="flex items-center gap-2 mt-2 sm:mt-0">
-          <button
-            onClick={onStart}
-            disabled={starting || !isOwner}
-            title={!isOwner ? "Solo el dueño de la liga puede iniciar el draft" : undefined}
-            className="rounded-lg bg-cyan-400 text-black px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
-          >
-            {starting ? "Iniciando…" : "Iniciar draft"}
-          </button>
-          <button
-            onClick={onFinish}
-            disabled={finishing || !isOwner || notStarted}
-            title={
-              !isOwner
-                ? "Solo el dueño de la liga puede finalizar el draft"
-                : notStarted
-                ? "El draft aún no ha comenzado"
-                : undefined
-            }
-            className="rounded-lg bg-red-500 text-white px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
-          >
-            {finishing ? "Finalizando…" : "Finalizar draft"}
-          </button>
-        </div>
+       <div className="flex items-center gap-2 mt-2 sm:mt-0">
+        {isOwner && (
+          <>
+            <button
+              onClick={onStart}
+              disabled={starting}
+              className="rounded-lg bg-cyan-400 text-black px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              {starting ? "Iniciando…" : "Iniciar draft"}
+            </button>
+            <button
+              onClick={onFinish}
+              disabled={finishing || notStarted}
+              className="rounded-lg bg-red-500 text-white px-3 py-1.5 font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              {finishing ? "Finalizando…" : "Finalizar draft"}
+            </button>
+          </>
+        )}
+      </div>
       </header>
       {draftPlayer?.current_user && (
         <div className="mx-auto max-w-6xl mb-6 rounded-xl bg-cyan-400/10 border border-cyan-400/30 p-4 text-center">

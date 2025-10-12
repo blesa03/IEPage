@@ -68,7 +68,7 @@ export default function App() {
           }
         />
         <Route
-          path="/ranking"
+          path="/ranking/:leagueId"
           element={
             <ProtectedRoute user={user}>
               <Ranking />

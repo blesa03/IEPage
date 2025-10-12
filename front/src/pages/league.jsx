@@ -60,23 +60,35 @@ export default function League() {
       {/* Banner */}
       <header className="relative bg-gradient-to-r from-slate-900 to-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-12">
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-3">
+               <div className="max-w-3xl mx-auto px-4 pb-10">
+                <button
+                  onClick={() => nav("/")}
+                  className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15"
+                >
+                  Volver al inicio
+                </button>
+              </div>
               <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-                ¡Bienvenido a{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-orange-400 to-red-500 drop-shadow-[0_2px_0_rgba(0,0,0,0.45)]">
+                <span className="text-cyan-400">
                   {leagueName}
                 </span>
-                !
+                
               </h1>
               <p className="mt-2 text-white/80">Selecciona una sección para continuar.</p>
 
-              <div className="mt-6 space-y-2 text-white/70">
-                {/* miembros = usuarios que participan en drafts de la liga */}
-                <p>Miembros: {league?.members?.length ?? "–"}</p>
-                {/* si en un futuro devuelves equipos/jugadores, se pintan aquí */}
-                {/* <p>Equipos inscritos: {league?.teams?.length ?? "–"}</p>
-                <p>Jugadores totales: {league?.players?.length ?? "–"}</p> */}
+              
+              <div className="mt-6 space-y-1 text-white/70">
+                <p className="font-semibold">Miembros:</p>
+                <ul className="list-disc list-inside">
+                  {league?.members?.map((member) => (
+                    <li key={member.id}>
+                      {member.username} {member.id === league.owner.id && <span className="text-yellow-400 font-bold">(Propietario)</span>}
+                    </li>
+                  )) ?? "–"}
+                </ul>
               </div>
 
               {error && <div className="mt-3 text-red-400">{error}</div>}
@@ -117,14 +129,14 @@ export default function League() {
         )}
 
         <Link
-          to="/ranking"
+          to={`/ranking/${league.id}`}
           className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
         >
-          <div className="text-xl font-semibold">Ranking</div>
+          <div className="text-xl font-semibold">Clasificación</div>
           <div className="text-white/70 mt-1">Estadísticas y posiciones</div>
         </Link>
 
-        <Link
+        {/* <Link
           to="/team"
           className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
         >
@@ -138,17 +150,10 @@ export default function League() {
         >
           <div className="text-xl font-semibold">Fichajes</div>
           <div className="text-white/70 mt-1">Presupuesto y traspasos</div>
-        </Link>
+        </Link> */}
       </main>
 
-      <div className="max-w-6xl mx-auto px-4 pb-10">
-        <button
-          onClick={() => nav("/")}
-          className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15"
-        >
-          Volver al inicio
-        </button>
-      </div>
+      
 
       {loading && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center text-white/70">
