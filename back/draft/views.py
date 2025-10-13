@@ -43,7 +43,7 @@ async def view_draft_stream(request: HttpRequest, draft_id):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     async def event_stream():
-        last_draft_user_id = None
+        last_draft = None
 
         while True:
             try:
@@ -53,25 +53,16 @@ async def view_draft_stream(request: HttpRequest, draft_id):
                 yield f"data: {json.dumps({'error': 'Draft no encontrado'})}\n\n"
                 break
 
-            # Verificamos si ha cambiado el usuario actual
-            current_user_id = draft.current_draft_user.id if draft.current_draft_user else None
 
-            if current_user_id != last_draft_user_id:
-                last_draft_user_id = current_user_id
+            if draft != last_draft:
+                last_draft = draft
 
-                if current_user_id is not None:
-                    try:
-                        user = await sync_to_async(User.objects.get)(id=current_user_id)
-                        username = user.username
-                    except User.DoesNotExist:
-                        username = None
-                else:
-                    username = None
+                user = await sync_to_async(User.objects.get)(id=draft.current_draft_user.user_id)
 
                 response_data = {
                     'id': draft.id,
                     'name': draft.name,
-                    'current_user': username,
+                    'current_user': user.username,
                     'status': draft.status,
                 }
 
