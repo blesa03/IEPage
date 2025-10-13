@@ -41,18 +41,17 @@ def view_draft(request: HttpRequest, draft_id):
 async def view_draft_stream(request: HttpRequest, draft_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Obtener el draft de forma asíncrona
+    try:
+        draft = await sync_to_async(Draft.objects.get)(id=draft_id)
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
 
     async def event_stream():
         last_draft_user = None
 
         while True:
-            try:
-                # Obtiene el estado actual del draft (sin bloquear)
-                draft = await sync_to_async(Draft.objects.get)(id=draft_id)
-            except Draft.DoesNotExist:
-                yield f"data: {json.dumps({'error': 'Draft no encontrado'})}\n\n"
-                break
-
             if draft.current_draft_user != last_draft_user:
                 last_draft_user = draft.current_draft_user
 
