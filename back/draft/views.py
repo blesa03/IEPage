@@ -19,24 +19,24 @@ def view_draft(request: HttpRequest, draft_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
-    try:
-        draft = Draft.objects.get(id=draft_id)
-    except Draft.DoesNotExist:
-        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
+    # try:
+    #     draft = Draft.objects.get(id=draft_id)
+    # except Draft.DoesNotExist:
+    #     return JsonResponse({'error': 'Draft no encontrado'}, status=404)
     
-    try:
-        user = User.objects.get(id=draft.current_draft_user.id)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    # try:
+    #     user = User.objects.get(id=draft.current_draft_user.id)
+    # except User.DoesNotExist:
+    #     return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
-    return JsonResponse(
-        {
-            'id': draft.id,
-            'name': draft.name,
-            'current_user': user.username,
-            'status': draft.status    
-        }, 
-        safe=False)
+    # return JsonResponse(
+    #     {
+    #         'id': draft.id,
+    #         'name': draft.name,
+    #         'current_user': user.username,
+    #         'status': draft.status    
+    #     }, 
+    #     safe=False)
 
 async def view_draft_stream(request: HttpRequest, draft_id):
     if request.method != 'GET':
