@@ -181,13 +181,13 @@ useEffect(() => {
   evtSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      console.log(data)
       const draftData = {
         id: data.id,
         name: data.name,
         current_user: data.current_user,
         status: data.status
       };
-      console.log(draftData)
       setDraftPlayer(draftData);
 
     } catch (err) {
