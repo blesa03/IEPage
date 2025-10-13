@@ -117,8 +117,8 @@ export default function Draft() {
         },
       }));
       setPlayers(list);
-      const draftPlayer = await viewDraft(draftId);
-      setDraftPlayer(draftPlayer);
+      // const draftPlayer = await viewDraft(draftId);
+      // setDraftPlayer(draftPlayer);
     } catch (e) {
       const status = e?.response?.status;
       if (status === 409) setNotStarted(true);
@@ -171,38 +171,38 @@ export default function Draft() {
   return () => evtSource.close();
 }, [draftId, notStarted]);
 
-useEffect(() => {
-  if (notStarted) return;
+// useEffect(() => {
+//   if (notStarted) return;
 
-  const sseUrl = `${import.meta.env.VITE_API_URL}/draft/${draftId}/stream`;
+//   const sseUrl = `${import.meta.env.VITE_API_URL}/draft/${draftId}/stream`;
 
-  const evtSource = new EventSource(sseUrl);
+//   const evtSource = new EventSource(sseUrl);
 
-  evtSource.onmessage = (event) => {
+//   evtSource.onmessage = (event) => {
 
-    try {
-      const data = JSON.parse(event.data);
+//     try {
+//       const data = JSON.parse(event.data);
 
-      const draftData = {
-        id: data.id,
-        name: data.name,
-        current_user: data.current_user,
-        status: data.status
-      };
-      setDraftPlayer(draftData);
+//       const draftData = {
+//         id: data.id,
+//         name: data.name,
+//         current_user: data.current_user,
+//         status: data.status
+//       };
+//       setDraftPlayer(draftData);
 
-    } catch (err) {
-      console.error("Error parsing SSE data:", err);
-    }
-  };
+//     } catch (err) {
+//       console.error("Error parsing SSE data:", err);
+//     }
+//   };
 
-  evtSource.onerror = (err) => {
-    console.error("Error en conexión SSE:", err);
-    evtSource.close();
-  };
+//   evtSource.onerror = (err) => {
+//     console.error("Error en conexión SSE:", err);
+//     evtSource.close();
+//   };
 
-  return () => evtSource.close();
-}, [draftId, notStarted]);
+//   return () => evtSource.close();
+// }, [draftId, notStarted]);
 
   const byPos = useMemo(() => {
     const map = { GK: [], DF: [], MF: [], FW: [] };
