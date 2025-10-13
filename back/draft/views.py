@@ -224,7 +224,12 @@ def acquire_player(request: HttpRequest, draft_id):
 
     # Sacamos el jugador de draft
     try:
-        draft_player = DraftPlayer.objects.get(id=draft_player_id)
+        player = Player.objects.get(id=draft_player_id)
+    except DraftPlayer.DoesNotExist:
+        return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
+    
+    try:
+        draft_player = DraftPlayer.objects.get(player=player)
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
     
