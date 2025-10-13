@@ -179,8 +179,11 @@ useEffect(() => {
   const evtSource = new EventSource(sseUrl);
   console.log('2')
   evtSource.onmessage = (event) => {
+    console.log('3')
     try {
+      console.log('4')
       const data = JSON.parse(event.data);
+      console.log('5')
       const draftData = {
         id: data.id,
         name: data.name,
