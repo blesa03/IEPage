@@ -56,7 +56,7 @@ async def view_draft_stream(request: HttpRequest, draft_id):
 
             if draft != last_draft:
                 last_draft = draft
-
+                # TODO: Creo que es esto
                 user = await sync_to_async(User.objects.get)(id=draft.current_draft_user.user_id)
 
                 response_data = {
