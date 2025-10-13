@@ -52,12 +52,13 @@ async def view_draft_stream(request: HttpRequest, draft_id):
             except Draft.DoesNotExist:
                 yield f"data: {json.dumps({'error': 'Draft no encontrado'})}\n\n"
                 break
+            
+            last_draft_user_id = last_draft.current_draft_user_id if last_draft else None
 
-
-            if draft != last_draft:
+            if draft.current_draft_user_id != last_draft_user_id:
                 last_draft = draft
-                # TODO: Creo que es esto
-                user = await sync_to_async(User.objects.get)(id=draft.current_draft_user.user_id)
+                draft_user = await sync_to_async(DraftUser.objects.get)(id=draft.current_draft_user_id)
+                user = await sync_to_async(User.objects.get)(id=draft_user.user_id)
 
                 response_data = {
                     'id': draft.id,

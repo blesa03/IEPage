@@ -173,17 +173,16 @@ export default function Draft() {
 
 useEffect(() => {
   if (notStarted) return;
-  console.log('0')
+
   const sseUrl = `${import.meta.env.VITE_API_URL}/draft/${draftId}/stream`;
-  console.log('1')
+
   const evtSource = new EventSource(sseUrl);
-  console.log('2')
+
   evtSource.onmessage = (event) => {
-    console.log('3')
+
     try {
-      console.log('4')
       const data = JSON.parse(event.data);
-      console.log('5')
+
       const draftData = {
         id: data.id,
         name: data.name,
