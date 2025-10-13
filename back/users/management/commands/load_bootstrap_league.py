@@ -5,25 +5,33 @@ from django.utils import timezone
 
 from pathlib import Path
 import csv
+from decimal import Decimal
 
 from league.models import League
 from draft.models import Draft
 from players.models import Player, DraftPlayer
 from users.models import DraftUser
 from team.models import Team
-from decimal import Decimal
+
 
 class Command(BaseCommand):
     """
-    Bootstrap de datos:
-      - (Opcional) Crea League y Draft (si no pasas --draft-id)
+    Bootstrap de datos con opción de limpieza previa.
+
+    Flujo:
+      - (Opcional) Reset (limpieza) previa:
+        * reset=all  -> borra todo lo relacionado (DraftPlayer, Team, DraftUser, Draft, League)
+                        (opcionalmente Player y usuarios por defecto)
+        * reset=draft-> borra solo datos ligados al draft indicado con --draft-id
+        * reset=none -> no borra nada
+      - (Opcional) Crea League y Draft (si no pasas --draft-id, o si tras reset=all se ignora)
       - Carga jugadores desde CSV y los mete en DraftPlayer
       - Crea usuarios por defecto + DraftUser + Team
 
-    Idempotente: no duplica usuarios/equipos/participaciones.
+    Idempotente en modo "draft": no duplica usuarios/equipos/participaciones.
     """
 
-    help = "Crea liga + draft (si no existe), carga jugadores CSV y crea usuarios/equipos en ese draft."
+    help = "Limpia datos (opcional), crea liga/draft (si procede), carga jugadores CSV y crea usuarios/equipos."
 
     # --- usuarios por defecto (puedes editar aquí) ---
     DEFAULT_USERS = [
@@ -32,7 +40,7 @@ class Command(BaseCommand):
         {"username": "Daniwellingssss", "team_name": "Manchester Dani",     "password": "]q&U376]!{jx"},
         {"username": "Franchesco",      "team_name": "Los barbaros",        "password": "ORo29!T]7iCs"},
         {"username": "Sorey",           "team_name": "TIRES",               "password": "8[o%CvB86riK"},
-        {"username": "lojnoe",          "team_name": "Barrio Alto",        "password": "8[o%CvB26riK"},
+        {"username": "lojnoe",          "team_name": "Barrio Alto",         "password": "8[o%CvB26riK"},
     ]
 
     def add_arguments(self, parser):
@@ -42,7 +50,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--csv", type=str, default="../data.csv",
-            help="Ruta al CSV de jugadores (columnas: name,gender,position,element,sprite)."
+            help="Ruta al CSV de jugadores (columnas: name,gender,position,element,sprite,value en millones)."
         )
         parser.add_argument(
             "--league-name", type=str, default="Primera Liga Inazuma",
@@ -64,12 +72,23 @@ class Command(BaseCommand):
             "--skip-csv", action="store_true",
             help="No cargar jugadores desde CSV (solo usuarios/equipos)."
         )
+        parser.add_argument(
+            "--reset", choices=["none", "draft", "all"], default=None,
+            help="Modo de limpieza previa. Por defecto: 'draft' si pasas --draft-id, 'all' si no lo pasas."
+        )
+        parser.add_argument(
+            "--purge-players", action="store_true",
+            help="(Solo con --reset all) Borra también todos los Player."
+        )
+        parser.add_argument(
+            "--purge-default-users", action="store_true",
+            help="(Solo con --reset all) Borra también los usuarios listados en DEFAULT_USERS."
+        )
 
     @transaction.atomic
     def handle(self, *args, **opts):
         User = get_user_model()
 
-        draft = None
         draft_id = opts["draft_id"]
         csv_path = Path(opts["csv"]).resolve()
         league_name = opts["league_name"]
@@ -77,23 +96,80 @@ class Command(BaseCommand):
         owner_id_opt = opts["owner_id"]
         budget = opts["budget"]
         skip_csv = opts["skip_csv"]
+        reset = opts["reset"]
+        purge_players = opts["purge_players"]
+        purge_default_users = opts["purge_default_users"]
 
-        # 1) Resolver/crear DRAFT
+        # Resolución por defecto del modo reset
+        if reset is None:
+            reset = "draft" if draft_id else "all"
+
+        # 0) Si se va a hacer reset=draft y viene draft_id, obtenemos ese draft
+        draft = None
         if draft_id:
             try:
                 draft = Draft.objects.select_related("league__owner").get(id=draft_id)
             except Draft.DoesNotExist:
                 raise CommandError(f"Draft id={draft_id} no existe.")
-            self.stdout.write(self.style.SUCCESS(f"Usando Draft existente: id={draft.id}, liga={draft.league.name}"))
+
+        # 0.1) LIMPIEZA PREVIA según modo
+        if reset == "all":
+            if draft_id:
+                self.stdout.write(self.style.WARNING(
+                    "--reset=all + --draft-id: se ignorará --draft-id tras el borrado total."
+                ))
+                draft = None
+                draft_id = None
+
+            # Orden seguro: primero hijos -> luego padres
+            deleted_dp = DraftPlayer.objects.all().delete()
+            deleted_team = Team.objects.all().delete()
+            deleted_du = DraftUser.objects.all().delete()
+            deleted_draft = Draft.objects.all().delete()
+            deleted_league = League.objects.all().delete()
+
+            self.stdout.write(self.style.SUCCESS(
+                f"[reset all] DraftPlayer borrados: {deleted_dp[0]} · Team: {deleted_team[0]} · "
+                f"DraftUser: {deleted_du[0]} · Draft: {deleted_draft[0]} · League: {deleted_league[0]}"
+            ))
+
+            if purge_players:
+                deleted_players = Player.objects.all().delete()
+                self.stdout.write(self.style.SUCCESS(f"[reset all] Player borrados: {deleted_players[0]}"))
+
+            if purge_default_users:
+                usernames = [u["username"] for u in self.DEFAULT_USERS]
+                deleted_users = User.objects.filter(username__in=usernames).delete()
+                self.stdout.write(self.style.SUCCESS(f"[reset all] DEFAULT_USERS borrados: {deleted_users[0]}"))
+
+        elif reset == "draft":
+            if draft is None:
+                self.stdout.write(self.style.WARNING(
+                    "[reset draft] No hay --draft-id. No se borra nada a nivel de draft (usa --reset all si quieres todo limpio)."
+                ))
+            else:
+                deleted_dp = DraftPlayer.objects.filter(draft=draft).delete()
+                deleted_team = Team.objects.filter(draft=draft).delete()
+                deleted_du = DraftUser.objects.filter(draft=draft).delete()
+                self.stdout.write(self.style.SUCCESS(
+                    f"[reset draft] Draft={draft.id} -> DraftPlayer: {deleted_dp[0]} · Team: {deleted_team[0]} · DraftUser: {deleted_du[0]}"
+                ))
         else:
-            # Aún no sabemos el owner: o lo trae --owner-id o lo elegimos luego (primer usuario creado)
+            self.stdout.write(self.style.WARNING("[reset none] No se ha borrado nada."))
+
+        # 1) Resolver/crear DRAFT
+        if draft_id and draft is not None:
+            self.stdout.write(self.style.SUCCESS(
+                f"Usando Draft existente: id={draft.id}, liga={draft.league.name}"
+            ))
+        else:
             owner_user = None
             if owner_id_opt:
                 try:
                     owner_user = User.objects.get(id=owner_id_opt)
                 except User.DoesNotExist:
                     raise CommandError(f"Owner con id={owner_id_opt} no existe. Crea ese usuario primero o no pases --owner-id.")
-            # Creamos liga sin owner si no lo tenemos aún; lo asignaremos luego si hace falta
+
             league = League.objects.create(name=league_name, owner=owner_user)
             draft = Draft.objects.create(league=league, name=draft_name)
             self.stdout.write(self.style.SUCCESS(f"Liga creada: '{league.name}', owner={getattr(league.owner, 'username', None)}"))
@@ -137,29 +213,25 @@ class Command(BaseCommand):
             if created_team:
                 self.stdout.write(self.style.SUCCESS(f"[team] creado: {team_name}"))
             else:
-                # actualiza nombre/presupuesto por si cambian
                 team.name = team_name
                 team.budget = budget
                 team.save(update_fields=["name", "budget"])
                 self.stdout.write(f"[team] actualizado: {team_name}")
 
         # 3) Si la liga no tenía owner y no se pasó --owner-id, asignamos el primero creado
-        if not draft_id:
-            league = draft.league
-            if league.owner_id is None:
-                if created_users:
-                    league.owner = created_users[0]
-                    league.save(update_fields=["owner"])
-                    self.stdout.write(self.style.SUCCESS(f"[league] owner asignado a: {league.owner.username}"))
-                else:
-                    raise CommandError("No se pudo asignar owner a la liga: no se creó ningún usuario.")
+        if draft.league.owner_id is None:
+            if created_users:
+                draft.league.owner = created_users[0]
+                draft.league.save(update_fields=["owner"])
+                self.stdout.write(self.style.SUCCESS(f"[league] owner asignado a: {draft.league.owner.username}"))
+            else:
+                raise CommandError("No se pudo asignar owner a la liga: no se creó ningún usuario.")
 
         # 4) (Opcional) Cargar jugadores desde CSV al draft
         if not skip_csv:
             if not csv_path.exists():
                 raise CommandError(f"CSV no encontrado en: {csv_path}")
 
-            # Esperamos columnas: name, gender, position, element, sprite
             count_new_players = 0
             count_new_dp = 0
             with csv_path.open("r", encoding="utf-8") as f:
@@ -168,7 +240,14 @@ class Command(BaseCommand):
                     name = (row.get("name") or "").strip()
                     if not name:
                         continue
-                    # Evitar duplicidades por nombre (ajusta si tu modelo tiene unicidad distinta)
+
+                    # value esperado en millones (p.ej. "5.5" -> 5.5 * 1_000_000)
+                    raw_value = row.get("value", "").strip()
+                    try:
+                        value_millions = Decimal(str(raw_value)) if raw_value != "" else Decimal("0")
+                    except Exception:
+                        value_millions = Decimal("0")
+
                     player, created_p = Player.objects.get_or_create(
                         name=name,
                         defaults={
@@ -176,7 +255,7 @@ class Command(BaseCommand):
                             "position": (row.get("position") or "").strip(),
                             "element": (row.get("element") or "").strip(),
                             "sprite": (row.get("sprite") or "").strip(),
-                            "value": Decimal(row.get("value", 0.0)) * 1000000,
+                            "value": value_millions * Decimal(1_000_000),
                         },
                     )
                     if created_p:
