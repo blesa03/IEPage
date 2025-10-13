@@ -187,6 +187,7 @@ useEffect(() => {
         current_user: data.current_user,
         status: data.status
       };
+      console.log(draftData)
       setDraftPlayer(draftData);
 
     } catch (err) {
