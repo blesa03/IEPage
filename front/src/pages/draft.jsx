@@ -180,8 +180,8 @@ useEffect(() => {
 
   evtSource.onmessage = (event) => {
     try {
+      console.log(event.data)
       const data = JSON.parse(event.data);
-      console.log(data)
       const draftData = {
         id: data.id,
         name: data.name,
