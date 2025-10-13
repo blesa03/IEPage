@@ -42,36 +42,42 @@ async def view_draft_stream(request: HttpRequest, draft_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
-    # Obtener el draft de forma asíncrona
-    try:
-        draft = await sync_to_async(Draft.objects.get)(id=draft_id)
-    except Draft.DoesNotExist:
-        return JsonResponse({'error': 'Draft no encontrado'}, status=404)
-
     async def event_stream():
-        last_draft_user = None
+        last_draft_user_id = None
 
         while True:
-            if draft.current_draft_user != last_draft_user:
-                last_draft_user = draft.current_draft_user
+            try:
+                # Recargar el draft cada ciclo
+                draft = await sync_to_async(Draft.objects.get)(id=draft_id)
+            except Draft.DoesNotExist:
+                yield f"data: {json.dumps({'error': 'Draft no encontrado'})}\n\n"
+                break
 
-                try:
-                    user = await sync_to_async(User.objects.get)(id=draft.current_draft_user.id)
-                except User.DoesNotExist:
-                    yield f"data: {json.dumps({'error': 'Usuario no encontrado'})}\n\n"
-                    break
+            # Verificamos si ha cambiado el usuario actual
+            current_user_id = draft.current_draft_user.id if draft.current_draft_user else None
+
+            if current_user_id != last_draft_user_id:
+                last_draft_user_id = current_user_id
+
+                if current_user_id is not None:
+                    try:
+                        user = await sync_to_async(User.objects.get)(id=current_user_id)
+                        username = user.username
+                    except User.DoesNotExist:
+                        username = None
+                else:
+                    username = None
 
                 response_data = {
                     'id': draft.id,
                     'name': draft.name,
-                    'current_user': user.username,
+                    'current_user': username,
                     'status': draft.status,
                 }
 
                 json_data = json.dumps(response_data, cls=DjangoJSONEncoder)
                 yield f"data: {json_data}\n\n"
 
-            # Esperar sin bloquear el event loop
             await asyncio.sleep(2)
 
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
