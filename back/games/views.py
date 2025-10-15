@@ -159,11 +159,12 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
     if game.winner:
         # Le damos 8M al ganador y 2 al perdedor
         game.winner.budget += 8000000
+        game.winner.points += 3
         
         loser_team = game.local_team if game.winner == game.local_team else game.away_team
         loser_team.budget += 2000000
         
-        game.winner.save(update_fields=['budget'])
+        game.winner.save(update_fields=['budget', 'points'])
         loser_team.save(update_fields=['budget'])
     # Si no hay ganador (empate)
     else:
@@ -171,8 +172,12 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
         game.local_team.budget += 5000000
         game.away_team.budget += 5000000
         
-        game.local_team.save(update_fields=['budget'])
-        game.away_team.save(update_fields=['budget'])
+        game.local_team.points += 1
+        game.away_team.points += 1
+        
+        
+        game.local_team.save(update_fields=['budget', 'points'])
+        game.away_team.save(update_fields=['budget', 'points'])
     
     # Para cada jugador que ha marcado goles le creamos las estadísticas del partido
     for key, value in game_result_request.goals.items():
