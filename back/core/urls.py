@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/league/', include('league.urls')),
     path('api/team/', include('team.urls')),
     path('api/ranking/', include('ranking.urls')),
+    path('api/games/', include('games.urls')),
     path("api/auth/csrf", csrf_view),
 ]

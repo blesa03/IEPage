@@ -5,6 +5,7 @@ from games.models import Game, GameResultRequest, Stats
 from games.types import GameStatus, GameResultRequestStatus
 import json
 from players.models import DraftPlayer
+from users.models import User
 
 def view_matchs(request: HttpRequest, league_id):
     if request.method != 'GET':
@@ -37,6 +38,29 @@ def view_matchs(request: HttpRequest, league_id):
             }
         )
 
+    return JsonResponse(response, safe=False)
+
+def view_match(request: HttpRequest, game_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Recuperamos el partido
+    try:
+        game = Game.objects.get(id=game_id)
+    except Game.DoesNotExist:
+        return JsonResponse({'error': 'Partido no encontrado'}, status=404)
+    
+    response = {
+        'id': game.id,
+        'week': game.week,
+        'local_team': game.local_team.name,
+        'away_team': game.away_team.name,
+        'local_goals': game.local_goals,
+        'away_goals': game.away_goals,
+        'winner': game.winner,
+        'status': game.status,
+    }
+    
     return JsonResponse(response, safe=False)
 
 def add_match_result_request(request: HttpRequest, game_id):
@@ -78,7 +102,7 @@ def add_match_result_request(request: HttpRequest, game_id):
     return JsonResponse({'message': 'Solicitud enviada correctamente'})
 
 def get_match_result_requests(request: HttpRequest, game_id):
-    if request.method != 'POST':
+    if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     # Filtramos las solicitudes de un partido
@@ -89,6 +113,16 @@ def get_match_result_requests(request: HttpRequest, game_id):
 def approve_match_result_request(request: HttpRequest, game_result_request_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Obtenemos el user y vemos sus permisos
+    try:
+        user = User.objects.get(id=request.user.id)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
+    
+    # Si no es admin no le permitimos realizar esta acción
+    if user.role != "admin":
+        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
     
     # Recuperamos la solicitud
     try:
@@ -174,6 +208,16 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
 def reject_match_result_request(request: HttpRequest, game_result_request_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Obtenemos el user y vemos sus permisos
+    try:
+        user = User.objects.get(id=request.user.id)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
+    
+    # Si no es admin no le permitimos realizar esta acción
+    if user.role != "admin":
+        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
     
     try:
         game_result_request = GameResultRequest.objects.get(id=game_result_request_id)
