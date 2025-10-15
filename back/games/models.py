@@ -7,13 +7,13 @@ from players.models import DraftPlayer
 class Game(models.Model):
     week = models.IntegerField()
     
-    local_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True)
-    away_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True)
+    local_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, related_name='local_team')
+    away_team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, related_name='away_team')
     
     local_goals = models.IntegerField(null=True, blank=True)
     away_goals = models.IntegerField(null=True, blank=True)
     
-    winner = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
+    winner = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True, related_name='winner')
     
     status = models.CharField(choices=GameStatus, default=GameStatus.PENDING, max_length=100)
     
@@ -31,8 +31,8 @@ class GameResultRequest(models.Model):
     away_goals = models.IntegerField(null=True, blank=True)
     
     # Portero local y visitante
-    local_goalkeeper = models.ForeignKey(DraftPlayer, on_delete=models.SET_NULL)
-    away_goalkeeper = models.ForeignKey(DraftPlayer, on_delete=models.SET_NULL)
+    local_goalkeeper = models.ForeignKey(DraftPlayer, on_delete=models.SET_NULL, null=True, related_name='local_goalkeeper')
+    away_goalkeeper = models.ForeignKey(DraftPlayer, on_delete=models.SET_NULL, null=True, related_name='away_goalkeeper')
     
     # Goles marcados (key: DraftPlayer, value: goles marcados)
     goals = models.JSONField(default=dict)
