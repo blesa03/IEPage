@@ -17,17 +17,14 @@ export default function Home({ user, onLogout }) {
   useEffect(() => {
     me()
       .then((u) => {
-        console.info("[HOME] Usuario autenticado:", { id: u?.id, username: u?.username });
       })
       .catch(() => {
-        console.info("[HOME] Sin sesión");
       });
   }, []);
 
   // Log cuando cambia el prop user
   useEffect(() => {
     if (user) {
-      console.info("[HOME] user prop:", { id: user.id, username: user.username });
     }
   }, [user]);
 
@@ -41,19 +38,9 @@ export default function Home({ user, onLogout }) {
       const arr = Array.isArray(data) ? data : [];
       setLeagues(arr);
 
-      // LOG: listar ligas con su rol
-      console.group("[HOME] Mis ligas");
-      console.table(
-        arr.map((l) => ({
-          leagueId: l.id,
-          name: l.name,
-          role: l.role,
-        }))
-      );
-      console.groupEnd();
+   
     } catch (e) {
       setErr(e?.response?.data?.error || "No se pudieron cargar tus ligas");
-      console.error("[HOME] Error getMyLeagues:", e?.response?.data || e);
     } finally {
       setLoadingLeagues(false);
     }
@@ -74,30 +61,15 @@ export default function Home({ user, onLogout }) {
   const logLeagueContext = (leagueBasic) => {
     // leagueBasic proviene de /league/mine → {id, name, role}
     const leagueId = leagueBasic?.id;
-    const role = leagueBasic?.role;
-    const userId = user?.id;
 
-    console.group("[HOME] Entrar a liga (pre-detalle)");
-    console.info("leagueId:", leagueId, "userId:", userId, "role:", role);
-    console.groupEnd();
 
     // Pedimos detalle para conocer owner real (no bloquea la navegación)
     if (leagueId) {
       getLeague(leagueId)
         .then((full) => {
-          const ownerId = full?.owner?.id;
-          const ownerUsername = full?.owner?.username;
-          const isOwner = ownerId && userId ? ownerId === userId : undefined;
-
-          console.group("[HOME] Detalle liga");
-          console.info("leagueId:", leagueId);
-          console.info("owner:", { id: ownerId, username: ownerUsername });
-          console.info("user:", { id: userId, username: user?.username });
-          console.info("role (lista):", role, " · isOwner(by ownerId===userId):", isOwner);
-          console.groupEnd();
+         
         })
         .catch((e) => {
-          console.warn("[HOME] No se pudo obtener detalle de liga para logs:", e?.response?.data || e);
         });
     }
   };
@@ -123,18 +95,9 @@ export default function Home({ user, onLogout }) {
       const created = await createLeague(newLeagueName.trim());
       setNewLeagueName("");
 
-      // LOG: la respuesta de create trae owner
-      console.group("[HOME] Liga creada");
-      console.info("leagueId:", created?.id, "name:", created?.name);
-      console.info("owner (server):", created?.owner); // { id, username }
-      console.info("current user:", user ? { id: user.id, username: user.username } : null);
-      console.info("role (implícito): owner");
-      console.groupEnd();
-
       enterLeague(created);
     } catch (e) {
       setErr(e?.response?.data?.error || "No se pudo crear la liga");
-      console.error("[HOME] Error createLeague:", e?.response?.data || e);
     }
   };
 
