@@ -67,11 +67,24 @@ def add_match_result_request(request: HttpRequest, game_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    try:
+        user = User.objects.get(id=request.user.id)
+    except Game.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
+    
     # Recuperamos el partido
     try:
         game = Game.objects.get(id=game_id)
     except Game.DoesNotExist:
         return JsonResponse({'error': 'Partido no encontrado'}, status=404)
+    
+    # Si el equipo del usuario que hace la petición no ha jugado el partido devolvemos el erro 
+    if user not in [
+        game.local_team.draft_user.user,
+        game.away_team.draft_user.user
+    ]:
+        return JsonResponse({'error': 'Tu equipo no ha jugado este partido'}, status=405)
     
     # Si el partido no está pendiente significa que ya se ha puesto una solicitud o se ha finalizado
     if game.status != GameStatus.PENDING:
