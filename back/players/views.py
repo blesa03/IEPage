@@ -2,7 +2,6 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpRequest
 from players.models import DraftPlayer, Player
 from players.models import DraftPlayer
-from market.models import TransferOffer
 
 
 def view_player(request: HttpRequest, player_id):
@@ -43,6 +42,5 @@ def view_draft_player(request: HttpRequest, draft_player_id):
             'element': player.player.element,    
             'sprite': player.player.sprite.url if player.player.sprite else None,    
             'value': player.player.value,
-            'offers': list(TransferOffer.objects.filter(draft_player=player).values())
         }, 
         safe=False)

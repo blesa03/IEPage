@@ -30,6 +30,9 @@ class TransferOffer(models.Model):
     # Oferta de la que proviene esta (solo en caso de ser contraoferta)
     source_offer = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
     
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    countered_at = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
         return f'Oferta de {self.offering_team.name} por {self.draft_player.name} por {self.offer}€'
