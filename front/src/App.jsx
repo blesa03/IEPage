@@ -8,6 +8,7 @@ import Team from "./pages/team";
 import Market from "./pages/market";
 import Register from "./pages/register";
 import League from "./pages/league";
+import Matches from "./pages/Matches"
 import { me, logout } from "./api";
 
 const ProtectedRoute = ({ user, children }) => {
@@ -76,6 +77,14 @@ export default function App() {
           }
         />
         <Route
+          path="/games/:leagueId"
+          element={
+            <ProtectedRoute user={user}>
+              <Matches />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/team/:draftId"
           element={
             <ProtectedRoute user={user}>
@@ -83,6 +92,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        
         <Route
           path="/market"
           element={
