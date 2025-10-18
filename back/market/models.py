@@ -27,8 +27,8 @@ class TransferProcess(models.Model):
     
     finished_at = models.DateTimeField(null=True, blank=True)
     
-    # Número máximo de ofertas permitidas si es None es infinito
-    max_offers = models.IntegerField(null=True, blank=True)
+    # Número máximo de ofertas permitidas
+    max_offers = models.IntegerField(default=2)
     
     def __str__(self):
         return f'Negociación de {self.offering_team.name} con {self.target_team.name} por {self.draft_player.name}'
