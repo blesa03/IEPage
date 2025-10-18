@@ -2,13 +2,38 @@ from django.db import models
 from players.models import DraftPlayer
 from team.models import Team
 from django.core.validators import MinValueValidator
-from market.types import TransferOfferStatus, TransferOfferSource
+from market.types import TransferOfferStatus, TransferOfferSource, TransferProcessStatus
 
-class TransferOffer(models.Model):
+
+class TransferProcess(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Jugador que se ficha
     draft_player = models.ForeignKey(DraftPlayer, on_delete=models.CASCADE)
+    
+    # Equipo que quiere fichar al jugador
+    offering_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_made')
+    # Equipo que tiene el jugador
+    target_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_received')
+    
+    # Oferta
+    amount = models.DecimalField(
+        decimal_places=2, 
+        max_digits=12, 
+        validators=[MinValueValidator(0.01)]
+    )
+    
+    status = models.CharField(max_length=20, choices=TransferProcessStatus.choices, default=TransferProcessStatus.OPEN)
+    
+    finished_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f'Negociación de {self.offering_team.name} con {self.target_team.name} por {self.draft_player.name}'
+
+class TransferOffer(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    transfer_process = models.ForeignKey(TransferProcess, on_delete=models.CASCADE)
     
     # Equipo que hace la oferta
     offering_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_made')
@@ -35,11 +60,13 @@ class TransferOffer(models.Model):
     countered_at = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
-        return f'Oferta de {self.offering_team.name} por {self.draft_player.name} por {self.offer}€'
+        return f'Oferta de {self.offering_team.name} a {self.target_team.name}'
 
 
 class Transfer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    transfer_process = models.ForeignKey(TransferProcess, on_delete=models.CASCADE)
     
      # Jugador que se ficha
     draft_player = models.ForeignKey(DraftPlayer, on_delete=models.CASCADE)

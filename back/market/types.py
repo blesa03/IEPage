@@ -9,3 +9,8 @@ class TransferOfferStatus(models.TextChoices):
 class TransferOfferSource(models.TextChoices):
     TEAM = 'team', 'Equipo'
     OFFER = 'offer', 'Oferta'
+
+
+class TransferProcessStatus(models.TextChoices):
+    OPEN = 'open', 'Abierta'
+    FINISHED = 'finished', 'Finalizada'
