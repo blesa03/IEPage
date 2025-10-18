@@ -16,7 +16,7 @@ class TransferProcess(models.Model):
     # Equipo que tiene el jugador
     target_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_received')
     
-    # Oferta
+    # Cantidad retenida
     amount = models.DecimalField(
         decimal_places=2, 
         max_digits=12, 
@@ -26,6 +26,9 @@ class TransferProcess(models.Model):
     status = models.CharField(max_length=20, choices=TransferProcessStatus.choices, default=TransferProcessStatus.OPEN)
     
     finished_at = models.DateTimeField(null=True, blank=True)
+    
+    # Número máximo de ofertas permitidas si es None es infinito
+    max_offers = models.IntegerField(null=True, blank=True)
     
     def __str__(self):
         return f'Negociación de {self.offering_team.name} con {self.target_team.name} por {self.draft_player.name}'

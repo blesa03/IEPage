@@ -9,12 +9,13 @@ from team.models import Team
 from market.models import TransferOffer, Transfer, TransferProcess
 from market.types import TransferOfferStatus, TransferProcessStatus, TransferOfferSource
 from datetime import datetime, UTC
+from django.forms.models import model_to_dict
 
 def view_player_offers(request: HttpRequest, draft_player_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
-    values = list(TransferOffer.objects.filter(draft_player_id=draft_player_id))
+    values = list(TransferOffer.objects.filter(draft_player_id=draft_player_id).values())
     
     return JsonResponse(values, safe=False)
 
@@ -28,7 +29,7 @@ def view_offer(request: HttpRequest, transfer_offer_id):
         return JsonResponse({'error': 'Oferta no encontrado'}, status=404)
     
     
-    return JsonResponse(offer, safe=False)
+    return JsonResponse(model_to_dict(offer), safe=False)
 
 def send_offer(request: HttpRequest):
     if request.method != 'POST':
@@ -62,7 +63,7 @@ def send_offer(request: HttpRequest):
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
     # Si existe alguna negociación por ese jugador con los mismos implciados abierta devolvemos error
-    if TransferProcess.objects.exists(offering_team=offering_team, status=TransferProcessStatus.OPEN):
+    if TransferProcess.objects.filter(offering_team=offering_team, status=TransferProcessStatus.OPEN).exists():
         return JsonResponse({'error': 'Ya tienes negociaciones abiertas por este jugador'}, status=409)
     
     # La oferta no puede ser menor que el valor del jugador
@@ -88,7 +89,7 @@ def send_offer(request: HttpRequest):
         draft_player=draft_player,
         offering_team=offering_team,
         target_team=draft_player.team,
-        offer=offer,
+        amount=offer,
         transfer_process=process
     )
 
@@ -105,15 +106,30 @@ def accept_offer(request: HttpRequest, transfer_offer_id):
     if offer.status != TransferOfferStatus.PENDING:
         return JsonResponse({'error': 'Esta oferta ya no se puede aceptar'}, status=409)
     
+    if offer.transfer_process.offering_team.budget < offer.offer:
+        return JsonResponse({'error': 'El equipo que intenta fichar no tiene presupuesto suficiente'}, status=409)
+    
     # Cambiamos el estaod de la oferta y su fecha de aceptación
     offer.status = TransferOfferStatus.ACEPTED
     offer.accepted_at = datetime.now(UTC)
     # Sumamos el presupuesto al equipo que vende y cambiamos al jugador de equipo
-    offer.target_team.budget += offer.transfer_process.amount
+    offer.transfer_process.target_team.budget += offer.offer
     offer.transfer_process.draft_player.team = offer.offering_team
     
+    # Calculamos el offset
+    offset = offer.offer - offer.transfer_process.amount
+    
+    # Si hay offset significa que la oferta es distinta a la última que propuso el offering_team y hay que cambiar su presupuesto
+    if offset:
+        offer.transfer_process.offering_team.budget -= offset
+        offer.transfer_process.offering_team.save(update_fields=['budget'])
+        
+        # Cambiamos también la cantidad final de la negociación
+        offer.transfer_process.amount += offset
+        offer.transfer_process.save(update_fields=['amount'])
+    
     offer.save(update_fields=['status'])
-    offer.target_team.save(update_fields=['budget'])
+    offer.transfer_process.target_team.save(update_fields=['budget'])
     offer.transfer_process.draft_player.save(update_fields=['team'])
     
     # Cambiamos el estado y la fecha de finalización de las negociaciones
@@ -151,7 +167,7 @@ def reject_offer(request: HttpRequest, transfer_offer_id):
     offer.transfer_process.offering_team.budget += offer.transfer_process.amount
     
     offer.save(update_fields=['status'])
-    offer.offering_team.save(update_fields=['budget'])
+    offer.transfer_process.offering_team.save(update_fields=['budget'])
     
     offer.transfer_process.status = TransferProcessStatus.FINISHED
     offer.transfer_process.finished_at = datetime.now(UTC)
@@ -179,6 +195,9 @@ def counter_offer(request: HttpRequest, transfer_offer_id):
     
     if offer.status != TransferOfferStatus.PENDING:
         return JsonResponse({'error': 'Esta oferta ya no se puede rechazar'}, status=409)
+    
+    if offer.transfer_process.max_offers and TransferOffer.objects.count(transfer_process=offer.transfer_process) + 1 > offer.transfer_process.max_offers * 2:
+         return JsonResponse({'error': 'No se pueden realizar más ofertas en esta negociación'}, status=409)
     
     try:
         draft_user = Draft.objects.get(user_id=request.user.id, draft=offer.transfer_process.draft_player.draft)
