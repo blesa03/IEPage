@@ -12,9 +12,9 @@ class TransferProcess(models.Model):
     draft_player = models.ForeignKey(DraftPlayer, on_delete=models.CASCADE)
     
     # Equipo que quiere fichar al jugador
-    offering_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_made')
+    offering_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_processes_made')
     # Equipo que tiene el jugador
-    target_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_received')
+    target_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_processes_received')
     
     # Cantidad retenida
     amount = models.DecimalField(
@@ -37,6 +37,8 @@ class TransferOffer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     transfer_process = models.ForeignKey(TransferProcess, on_delete=models.CASCADE)
+    
+    draft_player = models.ForeignKey(DraftPlayer, on_delete=models.CASCADE)
     
     # Equipo que hace la oferta
     offering_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='transfer_offers_made')

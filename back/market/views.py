@@ -6,10 +6,13 @@ from team.models import Team
 import json
 from players.models import DraftPlayer
 from team.models import Team
+from users.models import DraftUser
 from market.models import TransferOffer, Transfer, TransferProcess
 from market.types import TransferOfferStatus, TransferProcessStatus, TransferOfferSource
 from datetime import datetime, UTC
 from django.forms.models import model_to_dict
+from django.http import HttpResponse
+
 
 def view_player_offers(request: HttpRequest, draft_player_id):
     if request.method != 'GET':
@@ -46,14 +49,15 @@ def send_offer(request: HttpRequest):
     if not offer or not draft_player_id:
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
     
+    
     try:
         draft_player = DraftPlayer.objects.get(id=draft_player_id)
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
     
     try:
-        draft_user = Draft.objects.get(user_id=request.user.id, draft=draft_player.draft)
-    except Draft.DoesNotExist:
+        draft_user = DraftUser.objects.get(user_id=request.user.id, draft=draft_player.draft)
+    except DraftUser.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
     # Obtenemos el equipo que hace la oferta
@@ -63,7 +67,7 @@ def send_offer(request: HttpRequest):
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
     # Si existe alguna negociación por ese jugador con los mismos implciados abierta devolvemos error
-    if TransferProcess.objects.filter(offering_team=offering_team, status=TransferProcessStatus.OPEN).exists():
+    if TransferProcess.objects.filter(offering_team=offering_team, draft_player=draft_player, status=TransferProcessStatus.OPEN).exists():
         return JsonResponse({'error': 'Ya tienes negociaciones abiertas por este jugador'}, status=409)
     
     # La oferta no puede ser menor que el valor del jugador
@@ -82,16 +86,19 @@ def send_offer(request: HttpRequest):
     process = TransferProcess.objects.create(
         offering_team=offering_team,
         target_team=draft_player.team,
-        offer=offer,
+        amount=offer,
+        draft_player=draft_player
     )
     
     TransferOffer.objects.create(
-        draft_player=draft_player,
         offering_team=offering_team,
-        target_team=draft_player.team,
-        amount=offer,
-        transfer_process=process
+        target_team=process.target_team,
+        offer=offer,
+        transfer_process=process,
+        draft_player=draft_player
     )
+    
+    return HttpResponse(status=201)
 
 
 def accept_offer(request: HttpRequest, transfer_offer_id):
@@ -145,7 +152,10 @@ def accept_offer(request: HttpRequest, transfer_offer_id):
         to_team=offer.offering_team,
         accepted_offer=offer,
         transfer_amount=offer.offer,
+        transfer_process=offer.transfer_process
     )
+    
+    return HttpResponse(status=204)
 
 
 def reject_offer(request: HttpRequest, transfer_offer_id):
@@ -173,6 +183,8 @@ def reject_offer(request: HttpRequest, transfer_offer_id):
     offer.transfer_process.finished_at = datetime.now(UTC)
     
     offer.transfer_process.save(update_fields=['status', 'finished_at'])
+    
+    return HttpResponse(status=204)
 
 
 def counter_offer(request: HttpRequest, transfer_offer_id):
@@ -196,17 +208,13 @@ def counter_offer(request: HttpRequest, transfer_offer_id):
     if offer.status != TransferOfferStatus.PENDING:
         return JsonResponse({'error': 'Esta oferta ya no se puede rechazar'}, status=409)
     
-    if offer.transfer_process.max_offers and TransferOffer.objects.count(transfer_process=offer.transfer_process) + 1 > offer.transfer_process.max_offers * 2:
+    if offer.transfer_process.max_offers and TransferOffer.objects.filter(transfer_process=offer.transfer_process).count() + 1 > offer.transfer_process.max_offers * 2:
          return JsonResponse({'error': 'No se pueden realizar más ofertas en esta negociación'}, status=409)
     
     try:
-        draft_user = Draft.objects.get(user_id=request.user.id, draft=offer.transfer_process.draft_player.draft)
-    except Draft.DoesNotExist:
+        draft_user = DraftUser.objects.get(user_id=request.user.id, draft=offer.transfer_process.draft_player.draft)
+    except DraftUser.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
-    
-    
-    if TransferOffer.objects.filter(offering_team__draft_user=draft_user, status=TransferOfferStatus.PENDING).exists():
-        return JsonResponse({'error': 'Ya tienes una oferta pendiente por este jugador'}, status=409)
     
     try:
         counter_team = Team.objects.get(draft_user=draft_user)
@@ -250,12 +258,14 @@ def counter_offer(request: HttpRequest, transfer_offer_id):
     
     # Creamos una nueva oferta donde el source sea esta
     TransferOffer.objects.create(
-        draft_player=offer.transfer_process.draft_player,
         offering_team=offering_team,
         target_team=target_team,
         offer=new_offer,
         transfer_process=offer.transfer_process,
         source=TransferOfferSource.OFFER,
-        source_offer=offer
+        source_offer=offer,
+        draft_player=offer.draft_player
     )
+    
+    return HttpResponse(status=201)
     
