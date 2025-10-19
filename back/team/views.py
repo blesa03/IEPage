@@ -22,9 +22,6 @@ def my_team(request: HttpRequest, draft_id):
     except Draft.DoesNotExist:
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
-    players = list(DraftPlayer.objects.filter(team=team))
-    
-    
     
     response = {
         'id': team.id,
@@ -39,7 +36,36 @@ def my_team(request: HttpRequest, draft_id):
                 'element': player.player.element,
                 'sprite': player.player.sprite.url if player.player.sprite else None,
                 'value': player.player.value,
-            } for player in players
+            } for player in DraftPlayer.objects.filter(team=team)
+        ]
+    }
+    
+    return JsonResponse(response, safe=False)
+
+
+def view_team(request: HttpRequest, draft_id, team_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    
+    try:
+        team = Team.objects.get(id=team_id)
+    except Draft.DoesNotExist:
+        return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
+    
+    response = {
+        'id': team.id,
+        'name': team.name,
+        'players': [
+            {
+                'id': player.id,
+                'name': player.player.name,
+                'gender': player.player.gender,
+                'position': player.player.position,
+                'element': player.player.element,
+                'sprite': player.player.sprite.url if player.player.sprite else None,
+                'value': player.player.value,
+            } for player in DraftPlayer.objects.filter(team=team)
         ]
     }
     
