@@ -108,7 +108,6 @@ function Select({ className = "", children, ...props }) {
 // Mapa de posiciones consideradas portero (ajústalo si difiere)
 const GK_SET = new Set(["GK", "PORTERO", "POR"]);
 const isGK = (pos) => GK_SET.has((pos || "").toUpperCase());
-const isFieldPlayer = (pos) => !isGK(pos || "");
 
 // ——— Helpers de datos ———
 const normStatus = (s) => {
@@ -158,8 +157,6 @@ export default function MatchDetail() {
   const [reqsError, setReqsError] = useState("");
 
   // Form envío solicitud
-  const [localGoals, setLocalGoals] = useState("");
-  const [awayGoals, setAwayGoals] = useState("");
   const [localKeeperId, setLocalKeeperId] = useState("");
   const [awayKeeperId, setAwayKeeperId] = useState("");
 
@@ -238,30 +235,14 @@ export default function MatchDetail() {
       alive = false;
     };
   }, [draftId, localTeamId, awayTeamId]);
-
+  const keepersOnly = (ps = []) => ps.filter((p) => isGK(p.position));
+  const fieldOnly   = (ps = []) => ps.filter((p) => !isGK(p.position));
   // ——— MEMOS DE JUGADORES ———
-  const localKeepers = useMemo(() => {
-    const ps = localTeam?.players ?? [];
-    const gks = ps.filter((p) => isGK(p.position));
-    return gks.length ? gks : ps;
-  }, [localTeam]);
+  const localKeepers = useMemo(() => keepersOnly(localTeam?.players), [localTeam]);
+  const awayKeepers  = useMemo(() => keepersOnly(awayTeam?.players),  [awayTeam]);
 
-  const awayKeepers = useMemo(() => {
-    const ps = awayTeam?.players ?? [];
-    const gks = ps.filter((p) => isGK(p.position));
-    return gks.length ? gks : ps;
-  }, [awayTeam]);
-
-  const scorersLocal = useMemo(() => {
-    const ps = localTeam?.players ?? [];
-    return ps.filter((p) => (p.position ? isFieldPlayer(p.position) : true));
-  }, [localTeam]);
-
-  const scorersAway = useMemo(() => {
-    const ps = awayTeam?.players ?? [];
-    return ps.filter((p) => (p.position ? isFieldPlayer(p.position) : true));
-  }, [awayTeam]);
-
+  const scorersLocal = useMemo(() => fieldOnly(localTeam?.players), [localTeam]);
+  const scorersAway  = useMemo(() => fieldOnly(awayTeam?.players),  [awayTeam]);
   // Mapa de jugadores por id (ambos equipos)
   const playerById = useMemo(() => {
     const m = new Map();
@@ -282,10 +263,6 @@ export default function MatchDetail() {
   const changeRowAway = (i, key, val) =>
     setRowsAway((p) => p.map((r, idx) => (idx === i ? { ...r, [key]: key === "goals" ? Number(val) : val } : r)));
 
-  const incGoalsLocal = (i, d) =>
-    setRowsLocal((p) => p.map((r, idx) => (idx === i ? { ...r, goals: Math.max(0, Number(r.goals || 0) + d) } : r)));
-  const incGoalsAway = (i, d) =>
-    setRowsAway((p) => p.map((r, idx) => (idx === i ? { ...r, goals: Math.max(0, Number(r.goals || 0) + d) } : r)));
 
   // ——— Submit ———
   const onCreateRequest = async (e) => {
@@ -294,9 +271,7 @@ export default function MatchDetail() {
     setCreating(true);
     try {
       if (!draftId) throw new Error("Falta draftId en la URL.");
-      if (localGoals === "" || awayGoals === "" || !localKeeperId || !awayKeeperId) {
-        throw new Error("Faltan parámetros: goles y porteros son obligatorios.");
-      }
+      
 
       // Construir objeto de goles con claves DraftPlayer.id (suma local+visitante)
       const goalsObj = {};
@@ -314,8 +289,6 @@ export default function MatchDetail() {
       pushRows(rowsAway);
 
       const payload = {
-        local_goals: Number(localGoals),
-        away_goals: Number(awayGoals),
         local_goalkeeper_id: Number(localKeeperId),
         away_goalkeeper_id: Number(awayKeeperId),
         goals: goalsObj,
@@ -468,7 +441,7 @@ export default function MatchDetail() {
         <div className="space-y-4">
           <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-3">
             <div className="flex items-center justify-between">
-              <Field label="Jornada">{game.week}</Field>
+              <Field label="Semana ">{ game.week}</Field>
               <div className="text-3xl font-black tabular-nums">{score}</div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -498,28 +471,6 @@ export default function MatchDetail() {
           <form onSubmit={onCreateRequest} className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-4">
             <h2 className="font-semibold">Enviar solicitud de resultado</h2>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-white/60 mb-1">Goles local *</label>
-                <input
-                  type="number"
-                  value={localGoals}
-                  onChange={(e) => setLocalGoals(e.target.value)}
-                  className="w-full bg-white/10 ring-1 ring-white/10 rounded-lg px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-white/60 mb-1">Goles visitante *</label>
-                <input
-                  type="number"
-                  value={awayGoals}
-                  onChange={(e) => setAwayGoals(e.target.value)}
-                  className="w-full bg-white/10 ring-1 ring-white/10 rounded-lg px-3 py-2"
-                  required
-                />
-              </div>
-            </div>
 
             {/* Porteros */}
             <div>

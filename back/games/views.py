@@ -81,7 +81,7 @@ def add_match_result_request(request: HttpRequest, game_id):
     except Game.DoesNotExist:
         return JsonResponse({'error': 'Partido no encontrado'}, status=404)
     
-    # Si el equipo del usuario que hace la petición no ha jugado el partido devolvemos el erro 
+    # Si el equipo del usuario que hace la petición no ha jugado el partido devolvemos el error 
     if user not in [
         game.local_team.draft_user.user,
         game.away_team.draft_user.user
@@ -101,7 +101,7 @@ def add_match_result_request(request: HttpRequest, game_id):
     except Exception:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     
-    if not data.get('local_goals') or not data.get('away_goals') or not data.get('local_goalkeeper_id') or not data.get('away_goalkeeper_id'):
+    if not data.get('local_goalkeeper_id') or not data.get('away_goalkeeper_id'):
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
     
     try:
@@ -114,18 +114,35 @@ def add_match_result_request(request: HttpRequest, game_id):
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
     
+    # Obtenemos los goles por jugador
+    goals = data.get('goals', {})
+    
+    # Calculamos los goles totales de cada equipo
+    local_goals = 0
+    away_goals = 0
+    
+    for player_id, player_goals in goals.items():
+        try:
+            draft_player = DraftPlayer.objects.get(id=player_id)
+            # Verificamos a qué equipo pertenece el jugador
+            if draft_player.team == game.local_team:
+                local_goals += player_goals
+            elif draft_player.team == game.away_team:
+                away_goals += player_goals
+        except DraftPlayer.DoesNotExist:
+            return JsonResponse({'error': f'Jugador con ID {player_id} no encontrado'}, status=404)
+    
     # Creamos el request
     GameResultRequest.objects.create(
         game=game,
-        local_goals=data.get('local_goals'),
-        away_goals=data.get('away_goals'),
-        goals=data.get('goals'),
+        local_goals=local_goals,
+        away_goals=away_goals,
+        goals=goals,
         local_goalkeeper=local_goalkeeper,
         away_goalkeeper=away_goalkeeper,
     )
     
     return JsonResponse({'message': 'Solicitud enviada correctamente'})
-
 def get_match_result_requests(request: HttpRequest, game_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -139,16 +156,21 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
     if request.method != 'PUT':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
-    # Obtenemos el user y vemos sus permisos
     try:
-        user = User.objects.get(id=request.user.id)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
+        game_result_request = GameResultRequest.objects.get(id=game_result_request_id)
+    except GameResultRequest.DoesNotExist:
+        return JsonResponse({'error': 'Solicitud no encontrada'}, status=404)
     
-    # Si no es owner no le permitimos realizar esta acción
-    if user.role != "owner":
-        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
+    # Obtenemos el partido y la liga
+    try:
+        game = Game.objects.get(id=game_result_request.game.id)
+        league = game.draft.league
+    except Game.DoesNotExist:
+        return JsonResponse({'error': 'Partido no encontrado'}, status=404)
     
+    # Verificamos si el usuario es el dueño de la liga
+    if request.user.id != league.owner.id:
+        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=403)
     # Recuperamos la solicitud
     try:
         game_result_request = GameResultRequest.objects.get(id=game_result_request_id)
