@@ -1,41 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useLocation } from "react-router-dom";
 import { viewMatchs } from "../api/match";
 
-// ——— UI helpers ———
+function norm(s) {
+  return (s || "").toUpperCase();
+}
+
 function StatusDot({ status }) {
   const map = {
     IN_PROGRESS: "bg-green-500",
   };
-  const cls = map[status] || "bg-white/40";
+  const cls = map[norm(status)] || "bg-white/40";
   return <span className={`inline-block w-2 h-2 rounded-full ${cls}`} />;
 }
 
 function StatusLabel({ status }) {
+  const S = norm(status);
   const map = {
     PENDING_RESULT: "text-yellow-300",
     FINISHED: "text-white/70",
     SCHEDULED: "text-blue-300",
     IN_PROGRESS: "text-green-300",
+    PENDING: "text-white/50", 
   };
   const label =
-    status === "PENDING_RESULT"
+    S === "PENDING_RESULT"
       ? "PEND."
-      : status === "IN_PROGRESS"
+      : S === "IN_PROGRESS"
       ? "EN JUEGO"
-      : status === "SCHEDULED"
+      : S === "SCHEDULED"
       ? "PROG."
+      : S === "PENDING"
+      ? "PEND."
       : status || "—";
-  return <span className={`text-xs font-semibold ${map[status] || "text-white/50"}`}>{label}</span>;
+  return <span className={`text-xs font-semibold ${map[S] || "text-white/50"}`}>{label}</span>;
 }
-
 
 export default function Matches() {
   const nav = useNavigate();
   const { leagueId } = useParams();
+  const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [matches, setMatches] = useState([]);
+
+  const q = new URLSearchParams(location.search);
+  const draftIdFromQuery = q.get("draftId");
+  const savedLeague = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("selectedLeague") || "null");
+    } catch {
+      return null;
+    }
+  })();
+  const draftId = draftIdFromQuery || savedLeague?.currentDraftId || "";
 
   useEffect(() => {
     const load = async () => {
@@ -125,8 +144,7 @@ export default function Matches() {
             className="rounded-2xl border text-center border-white/10 bg-white/[0.03] shadow-sm"
           >
             <div className="px-4 py-3 border-b border-white/10 flex justify-center gap-3 text-center">
-              
-              <h2 className="text-lg font-semibold text-center" >Semana {week}</h2>
+              <h2 className="text-lg font-semibold text-center">Semana {week}</h2>
             </div>
 
             <ul className="divide-y divide-white/10">
@@ -148,53 +166,60 @@ export default function Matches() {
                       })
                     : null;
 
+
+                const toUrl = `/game/${game.id}?draftId=${draftId}`;
+                const state = { draftId };
+
                 return (
-                  <li key={game.id} className="px-3 sm:px-4 py-3 hover:bg-white/[0.06] transition">
-                    <div className="flex items-center">
-                      <div className="w-[88px] sm:w-[96px]" />
-               <div className="flex-1">
-                        {/* Línea equipos centrada y con ancho limitado */}
-                        <div className="w-full mx-auto max-w-[680px]">
-                          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-3">
-                            <span className="min-w-0 truncate whitespace-nowrap text-right font-medium text-sm sm:text-base">
-                              {game.local_team}
-                            </span>
+                  <li key={game.id}>
+                    <Link
+                      to={toUrl}
+                      state={state}
+                      className="block px-3 sm:px-4 py-3 hover:bg-white/[0.06] transition"
+                      title="Ver detalle"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-[88px] sm:w-[96px]" />
+                        <div className="flex-1">
+                          {/* Línea equipos centrada */}
+                          <div className="w-full mx-auto max-w-[680px]">
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-3">
+                              <span className="min-w-0 truncate whitespace-nowrap text-right font-medium text-sm sm:text-base">
+                                {game.local_team}
+                              </span>
 
-                            {/* separador o marcador centrado */}
-                            <span className="px-2 tabular-nums text-xl sm:text-2xl font-bold select-none">
-                              — {/* o {score} */}
-                            </span>
+                              <span className="px-2 tabular-nums text-xl sm:text-2xl font-bold select-none">
+                                {score}
+                              </span>
 
-                            <span className="min-w-0 truncate whitespace-nowrap text-left font-medium text-sm sm:text-base">
-                              {game.away_team}
-                            </span>
+                              <span className="min-w-0 truncate whitespace-nowrap text-left font-medium text-sm sm:text-base">
+                                {game.away_team}
+                              </span>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* estado/horario centrado debajo */}
-                        <div className="flex items-center justify-center gap-2 mt-1">
-                          <StatusDot status={game.status} />
-                          <StatusLabel status={game.status} />
-                          {when && game.status === 'SCHEDULED' && (
-                            <span className="text-xs text-white/60">· {when}</span>
+                          {/* estado/horario centrado debajo */}
+                          <div className="flex items-center justify-center gap-2 mt-1">
+                            <StatusDot status={game.status} />
+                            <StatusLabel status={game.status} />
+                            {when && game.status === "SCHEDULED" && (
+                              <span className="text-xs text-white/60">· {when}</span>
+                            )}
+                          </div>
+
+                          {game?.winner && (
+                            <div className="text-[11px] text-white/50 mt-1 text-center">
+                              Ganador: {game.winner}
+                            </div>
                           )}
                         </div>
 
-                        {game?.winner && (
-                          <div className="text-[11px] text-white/50 mt-1 text-center">
-                            Ganador: {game.winner}
-                          </div>
-                        )}
+                        {/* Flechita visual (opcional) */}
+                        <div className="hidden sm:block w-[88px] sm:w-[96px] text-center ml-2 text-white/60">
+                          ➜
+                        </div>
                       </div>
-                      {/* botón a la derecha */}
-                      <Link
-                        to={`/game/${game.id}`}
-                        className="w-[88px] sm:w-[96px] text-center ml-2 px-3 py-1.5 rounded-lg bg-yellow-400 text-black text-xs sm:text-sm font-semibold hover:opacity-90"
-                        title="Ver detalle"
-                      >
-                        Detalle
-                      </Link>
-                    </div>
+                    </Link>
                   </li>
                 );
               })}

@@ -8,7 +8,8 @@ import Team from "./pages/team";
 import Market from "./pages/market";
 import Register from "./pages/register";
 import League from "./pages/league";
-import Matches from "./pages/Matches"
+import Matches from "./pages/Matches";
+import MatchDetail from "./pages/MatchDetail";
 import { me, logout } from "./api";
 
 const ProtectedRoute = ({ user, children }) => {
@@ -52,6 +53,7 @@ export default function App() {
           path="/register"
           element={user ? <Navigate to="/" replace /> : <Register onRegistered={setUser} />}
         />
+
         <Route
           path="/league/:leagueId"
           element={
@@ -60,6 +62,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/draft/:draftId"
           element={
@@ -68,6 +71,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/ranking/:leagueId"
           element={
@@ -76,14 +80,25 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route
-          path="/games/:leagueId"
+          path="/games/league/:leagueId"
           element={
             <ProtectedRoute user={user}>
               <Matches />
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/game/:gameId"
+          element={
+            <ProtectedRoute user={user}>
+              <MatchDetail />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/team/:draftId"
           element={
@@ -92,7 +107,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/market"
           element={
@@ -101,6 +116,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

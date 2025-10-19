@@ -54,7 +54,9 @@ def view_match(request: HttpRequest, game_id):
         'id': game.id,
         'week': game.week,
         'local_team': game.local_team.name,
+        'local_team_id': game.local_team.id,
         'away_team': game.away_team.name,
+        'away_team_id': game.away_team.id,
         'local_goals': game.local_goals,
         'away_goals': game.away_goals,
         'winner': game.winner,
@@ -143,8 +145,8 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
     except User.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
     
-    # Si no es admin no le permitimos realizar esta acción
-    if user.role != "admin":
+    # Si no es owner no le permitimos realizar esta acción
+    if user.role != "owner":
         return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
     
     # Recuperamos la solicitud
@@ -243,8 +245,8 @@ def reject_match_result_request(request: HttpRequest, game_result_request_id):
     except User.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
     
-    # Si no es admin no le permitimos realizar esta acción
-    if user.role != "admin":
+    # Si no es owner no le permitimos realizar esta acción
+    if user.role != "owner":
         return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
     
     try:
@@ -266,6 +268,9 @@ def reject_match_result_request(request: HttpRequest, game_result_request_id):
         
     return JsonResponse({'message': 'Solicitud recahzada correctamente'})
         
-    
-    
-    
+def match_result_requests(request: HttpRequest, game_id):
+    if request.method == 'GET':
+        return get_match_result_requests(request, game_id)
+    if request.method == 'POST':
+        return add_match_result_request(request, game_id)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
