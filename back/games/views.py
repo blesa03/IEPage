@@ -91,7 +91,7 @@ def add_match_result_request(request: HttpRequest, game_id):
         return JsonResponse({'error': 'El partido no está pendiente'}, status=405)
     
     # Si existe alguna solicitud aprobada o pendiente damos error
-    if GameResultRequest.objects.exists(game_id=game_id, status__in=[GameResultRequestStatus.APPROVED, GameResultRequestStatus.PENDING]):
+    if GameResultRequest.objects.filter(game_id=game_id, status__in=[GameResultRequestStatus.APPROVED, GameResultRequestStatus.PENDING]).exists():
         return JsonResponse({'error': 'Hay una solictud pendiente o aprobada para este partido'}, status=405)
     
     try:
