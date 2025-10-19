@@ -125,7 +125,7 @@ class MarketViewsTests(TestCase):
         )
 
         url = reverse("send_offer")
-        data = {"offer": 600, "draft_player_id": new_draft_player.id}
+        data = {"offer": 1000, "draft_player_id": new_draft_player.id}
 
         response = self.client.post(url, json.dumps(data), content_type="application/json")
 
@@ -140,8 +140,17 @@ class MarketViewsTests(TestCase):
             TransferOffer.objects.filter(draft_player=new_draft_player).exists(),
             msg="No se creó la oferta para el nuevo jugador."
         )
+        
+        new_offer = TransferOffer.objects.get(draft_player=new_draft_player)
+        
+        self.assertTrue(new_offer.transfer_process != self.transfer_process, msg='La oferta no se ha creado correctamente')
+        self.assertTrue(new_offer.draft_player == new_draft_player, msg='La oferta no se ha creado correctamente')
+        self.assertTrue(new_offer.offer == 1000, msg='La oferta no se ha creado correctamente')
+        self.assertTrue(new_offer.transfer_process.amount == 1000, msg='La oferta no se ha creado correctamente')
+        self.assertTrue(new_offer.transfer_process.draft_player == new_draft_player, msg='La oferta no se ha creado correctamente')
 
-
+        
+        
     def test_send_offer_missing_parameters(self):
         url = reverse("send_offer")
         response = self.client.post(url, json.dumps({}), content_type="application/json")
@@ -152,6 +161,27 @@ class MarketViewsTests(TestCase):
         data = {"offer": 600, "draft_player_id": 9999}
         response = self.client.post(url, json.dumps(data), content_type="application/json")
         self.assertEqual(response.status_code, 404)
+    
+    def test_send_offer_team_owner(self):
+        new_player = Player.objects.create(
+            name="Jugador Test",
+            gender="M",
+            position="FW",
+            element="FIRE",
+            value=Decimal("500.00")
+        )
+        new_draft_player = DraftPlayer.objects.create(
+            player=new_player,
+            team=self.team1,
+            name="Jugador Draft Test",
+            draft=self.draft,
+            release_clause=Decimal("600.00")
+        )
+        
+        url = reverse("send_offer")
+        data = {"offer": 600, "draft_player_id": new_draft_player.id}
+        response = self.client.post(url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 409)
 
     # -------------------------------------------------------------------------
     # accept_offer

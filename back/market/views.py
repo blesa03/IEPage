@@ -66,6 +66,9 @@ def send_offer(request: HttpRequest):
     except Team.DoesNotExist:
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
+    if draft_player.team == offering_team:
+        return JsonResponse({'error': 'No puedes hacer una oferta por tu propio jugador'}, status=409)
+    
     # Si existe alguna negociación por ese jugador con los mismos implciados abierta devolvemos error
     if TransferProcess.objects.filter(offering_team=offering_team, draft_player=draft_player, status=TransferProcessStatus.OPEN).exists():
         return JsonResponse({'error': 'Ya tienes negociaciones abiertas por este jugador'}, status=409)
