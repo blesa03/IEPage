@@ -99,8 +99,18 @@ def add_match_result_request(request: HttpRequest, game_id):
     except Exception:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
     
-    if not data.get('local_goals') or not data.get('away_goals') or not data.get('local_goalkeeper') or not data.get('away_goalkeeper'):
+    if not data.get('local_goals') or not data.get('away_goals') or not data.get('local_goalkeeper_id') or not data.get('away_goalkeeper_id'):
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+    
+    try:
+        local_goalkeeper = DraftPlayer.objects.get(id=data.get('local_goalkeeper_id'))
+    except DraftPlayer.DoesNotExist:
+        return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
+    
+    try:
+        away_goalkeeper = DraftPlayer.objects.get(id=data.get('away_goalkeeper_id'))
+    except DraftPlayer.DoesNotExist:
+        return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
     
     # Creamos el request
     GameResultRequest.objects.create(
@@ -108,8 +118,8 @@ def add_match_result_request(request: HttpRequest, game_id):
         local_goals=data.get('local_goals'),
         away_goals=data.get('away_goals'),
         goals=data.get('goals'),
-        local_goalkeeper=data.get('local_goalkeeper'),
-        away_goalkeeper=data.get('away_goalkeeper'),
+        local_goalkeeper=local_goalkeeper,
+        away_goalkeeper=away_goalkeeper,
     )
     
     return JsonResponse({'message': 'Solicitud enviada correctamente'})
