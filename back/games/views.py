@@ -32,7 +32,7 @@ def view_matchs(request: HttpRequest, league_id):
                 'away_team': game.away_team.name,
                 'local_goals': game.local_goals,
                 'away_goals': game.away_goals,
-                'winner': game.winner,
+                'winner': game.winner.name if game.winner else None,
                 'status': game.status,
                 'result_request': result_request
             }
@@ -59,7 +59,7 @@ def view_match(request: HttpRequest, game_id):
         'away_team_id': game.away_team.id,
         'local_goals': game.local_goals,
         'away_goals': game.away_goals,
-        'winner': game.winner,
+        'winner': game.winner.name if game.winner else None,
         'status': game.status,
     }
     
@@ -267,14 +267,15 @@ def reject_match_result_request(request: HttpRequest, game_result_request_id):
     except User.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrada'}, status=404)
     
-    # Si no es owner no le permitimos realizar esta acción
-    if user.role != "owner":
-        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=404)
     
     try:
         game_result_request = GameResultRequest.objects.get(id=game_result_request_id)
     except GameResultRequest.DoesNotExist:
         return JsonResponse({'error': 'Solicitud no encontrada'}, status=404)
+    # Verificamos si el usuario es el dueño de la liga
+    
+    if request.user != game_result_request.game.draft.league.owner:
+        return JsonResponse({'error': 'No tienes permisos para hacer esto'}, status=403)
     
     if game_result_request.status != GameResultRequestStatus.PENDING:
         return JsonResponse({'error': 'la solicitud ya ha sido resuelta'}, status=404)

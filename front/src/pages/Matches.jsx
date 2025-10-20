@@ -149,10 +149,7 @@ export default function Matches() {
 
             <ul className="divide-y divide-white/10">
               {games.map((game) => {
-                const showScore =
-                  game.status === "FINISHED" ||
-                  game.status === "PENDING_RESULT" ||
-                  game.status === "IN_PROGRESS";
+                const showScore =  game.status === "finished"
 
                 const score = showScore
                   ? `${game?.local_goals ?? "-"}  -  ${game?.away_goals ?? "-"}`

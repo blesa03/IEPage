@@ -241,8 +241,8 @@ export default function MatchDetail() {
   const localKeepers = useMemo(() => keepersOnly(localTeam?.players), [localTeam]);
   const awayKeepers  = useMemo(() => keepersOnly(awayTeam?.players),  [awayTeam]);
 
-  const scorersLocal = useMemo(() => fieldOnly(localTeam?.players), [localTeam]);
-  const scorersAway  = useMemo(() => fieldOnly(awayTeam?.players),  [awayTeam]);
+  const scorersLocal = useMemo(() => localTeam?.players ?? [], [localTeam]);
+  const scorersAway  = useMemo(() => awayTeam?.players ?? [], [awayTeam]);
   // Mapa de jugadores por id (ambos equipos)
   const playerById = useMemo(() => {
     const m = new Map();
