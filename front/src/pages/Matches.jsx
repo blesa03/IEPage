@@ -99,7 +99,7 @@ export default function Matches() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0b0f1a] text-white">
+    <main className="min-h-screen bg-slate-950 text-white">
       {/* Topbar */}
       <header className="sticky top-0 z-10 backdrop-blur bg-[#0b0f1a]/70 border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">

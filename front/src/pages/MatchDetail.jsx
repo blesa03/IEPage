@@ -441,7 +441,7 @@ export default function MatchDetail() {
         <div className="space-y-4">
           <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-3">
             <div className="flex items-center justify-between">
-              <Field label="Semana-">{game.week}</Field>
+                <Field label={`Semana ${game.week}`} />
               <div className="text-3xl font-black tabular-nums">{score}</div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
