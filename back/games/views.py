@@ -50,6 +50,11 @@ def view_match(request: HttpRequest, game_id):
     except Game.DoesNotExist:
         return JsonResponse({'error': 'Partido no encontrado'}, status=404)
     
+    try:
+        user = User.objects.get(id=request.user.id)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
     response = {
         'id': game.id,
         'week': game.week,
@@ -61,6 +66,7 @@ def view_match(request: HttpRequest, game_id):
         'away_goals': game.away_goals,
         'winner': game.winner.name if game.winner else None,
         'status': game.status,
+        'take_part': game.local_team.draft_user.user == user or game.away_team.draft_user.user == user
     }
     
     return JsonResponse(response, safe=False)
@@ -71,7 +77,7 @@ def add_match_result_request(request: HttpRequest, game_id):
     
     try:
         user = User.objects.get(id=request.user.id)
-    except Game.DoesNotExist:
+    except User.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
     
