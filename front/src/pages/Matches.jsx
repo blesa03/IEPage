@@ -7,35 +7,40 @@ function norm(s) {
 }
 
 function StatusDot({ status }) {
+  const S = norm(status);
   const map = {
-    IN_PROGRESS: "bg-green-500",
+    IN_PROGRESS: "bg-green-500",   // en juego
+    SCHEDULED: "bg-blue-500",      // programado
+    PENDING_RESULT: "bg-amber-400",// pendiente de resultado
+    PENDING: "bg-white/60",        // pendiente genérico
+    FINISHED: "bg-indigo-400",     // ⬅︎ color propio para finalizado
   };
-  const cls = map[norm(status)] || "bg-white/40";
+  const cls = map[S] || "bg-white/40";
   return <span className={`inline-block w-2 h-2 rounded-full ${cls}`} />;
 }
 
 function StatusLabel({ status }) {
   const S = norm(status);
-  const map = {
+  const colorMap = {
     PENDING_RESULT: "text-yellow-300",
     FINISHED: "text-white/70",
     SCHEDULED: "text-blue-300",
     IN_PROGRESS: "text-green-300",
-    PENDING: "text-white/50", 
+    PENDING: "text-white/50",
   };
-  const label =
-    S === "PENDING_RESULT"
-      ? "PEND."
-      : S === "IN_PROGRESS"
-      ? "EN JUEGO"
-      : S === "SCHEDULED"
-      ? "PROG."
-      : S === "PENDING"
-      ? "PEND."
-      : status || "—";
-  return <span className={`text-xs font-semibold ${map[S] || "text-white/50"}`}>{label}</span>;
-}
 
+  // Nombre en ES
+  const labelMap = {
+    PENDING_RESULT: "Pend. resultado",
+    IN_PROGRESS: "En juego",
+    SCHEDULED: "Programado",
+    PENDING: "Pendiente",
+    FINISHED: "Finalizado",
+  };
+
+  const label = labelMap[S] ?? (status || "—");
+  return <span className={`text-xs font-semibold ${colorMap[S] || "text-white/50"}`}>{label}</span>;
+}
 export default function Matches() {
   const nav = useNavigate();
   const { leagueId } = useParams();
@@ -149,20 +154,20 @@ export default function Matches() {
 
             <ul className="divide-y divide-white/10">
               {games.map((game) => {
-                const showScore =  game.status === "finished"
-
+                const S = norm(game.status);
+                const finished = S === "FINISHED";
+                const showScore = finished; // solo mostramos marcador final
                 const score = showScore
                   ? `${game?.local_goals ?? "-"}  -  ${game?.away_goals ?? "-"}`
                   : "—";
 
-                const when =
-                  game?.kickoff_at
-                    ? new Date(game.kickoff_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : null;
+                const isDraw =
+                  finished &&
+                  Number(game?.local_goals) === Number(game?.away_goals);
 
+                const when = game?.kickoff_at
+                  ? new Date(game.kickoff_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : null;
 
                 const toUrl = `/game/${game.id}?draftId=${draftId}`;
                 const state = { draftId };
@@ -199,14 +204,14 @@ export default function Matches() {
                           <div className="flex items-center justify-center gap-2 mt-1">
                             <StatusDot status={game.status} />
                             <StatusLabel status={game.status} />
-                            {when && game.status === "SCHEDULED" && (
+                            {when && S === "SCHEDULED" && (
                               <span className="text-xs text-white/60">· {when}</span>
                             )}
                           </div>
 
-                          {game?.winner && (
+                          {finished && (
                             <div className="text-[11px] text-white/50 mt-1 text-center">
-                              Ganador: {game.winner}
+                              {isDraw ? "Empate" : (game?.winner ? `Ganador: ${game.winner}` : null)}
                             </div>
                           )}
                         </div>

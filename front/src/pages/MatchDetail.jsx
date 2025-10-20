@@ -134,6 +134,8 @@ export default function MatchDetail() {
   const { gameId } = useParams();
   const location = useLocation();
 
+  const [canRequest, setCanRequest] = useState(false); // ← flag de permiso
+
   const search = new URLSearchParams(location.search);
   const state = location.state || {};
   const draftId = state.draftId ?? search.get("draftId");
@@ -161,8 +163,8 @@ export default function MatchDetail() {
   const [awayKeeperId, setAwayKeeperId] = useState("");
 
   // Goleadores separados por equipo
-  const [rowsLocal, setRowsLocal] = useState([{ playerId: "", goals: 1 }]);
-  const [rowsAway, setRowsAway] = useState([{ playerId: "", goals: 1 }]);
+  const [rowsLocal, setRowsLocal] = useState([]);
+  const [rowsAway, setRowsAway] = useState([]);
 
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState("");
@@ -183,6 +185,8 @@ export default function MatchDetail() {
         setGame(data ?? null);
         setLocalTeamId(data?.local_team_id ?? null);
         setAwayTeamId(data?.away_team_id ?? null);
+        // ← usamos take_part del backend
+        setCanRequest(Boolean(data?.take_part ?? data?.takePart ?? false));
       } catch (e) {
         if (!alive) return;
         setError(parseErr(e) || "No se pudo cargar el partido.");
@@ -235,14 +239,15 @@ export default function MatchDetail() {
       alive = false;
     };
   }, [draftId, localTeamId, awayTeamId]);
+
   const keepersOnly = (ps = []) => ps.filter((p) => isGK(p.position));
-  const fieldOnly   = (ps = []) => ps.filter((p) => !isGK(p.position));
   // ——— MEMOS DE JUGADORES ———
   const localKeepers = useMemo(() => keepersOnly(localTeam?.players), [localTeam]);
   const awayKeepers  = useMemo(() => keepersOnly(awayTeam?.players),  [awayTeam]);
 
   const scorersLocal = useMemo(() => localTeam?.players ?? [], [localTeam]);
   const scorersAway  = useMemo(() => awayTeam?.players ?? [], [awayTeam]);
+
   // Mapa de jugadores por id (ambos equipos)
   const playerById = useMemo(() => {
     const m = new Map();
@@ -263,7 +268,6 @@ export default function MatchDetail() {
   const changeRowAway = (i, key, val) =>
     setRowsAway((p) => p.map((r, idx) => (idx === i ? { ...r, [key]: key === "goals" ? Number(val) : val } : r)));
 
-
   // ——— Submit ———
   const onCreateRequest = async (e) => {
     e.preventDefault();
@@ -271,7 +275,7 @@ export default function MatchDetail() {
     setCreating(true);
     try {
       if (!draftId) throw new Error("Falta draftId en la URL.");
-      
+      if (!canRequest) throw new Error("No tienes permiso para enviar una solicitud.");
 
       // Construir objeto de goles con claves DraftPlayer.id (suma local+visitante)
       const goalsObj = {};
@@ -329,6 +333,7 @@ export default function MatchDetail() {
   const showScore = ["finished", "pending_result", "in_progress"].includes(
     String(game.status || "").toLowerCase()
   );
+  const showForm = canRequest === true;
   const score = showScore ? `${game?.local_goals ?? "-"} — ${game?.away_goals ?? "-"}` : "—";
   const winnerLabel =
     typeof game.winner === "string" ? game.winner : (game.winner?.name ?? game.winner?.id ?? "—");
@@ -338,18 +343,22 @@ export default function MatchDetail() {
     const lgk = r.local_goalkeeper_id ?? r.local_goalkeeper;   // compat
     const agk = r.away_goalkeeper_id ?? r.away_goalkeeper;     // compat
     const intent = statusIntent(r.status);
+    const s = String(r.status || "").toLowerCase();
+    const canModerate = ["pending", "pendiente", "pending_result"].includes(s);
 
     return (
-      <li className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge intent="info">Propuesta</Badge>
-              <span className="text-xl tabular-nums font-bold">{r.local_goals} — {r.away_goals}</span>
-              <Badge intent={intent}>{normStatus(r.status)}</Badge>
-            </div>
+      <li className="rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
+        {/* Contenido centrado */}
+        <div className="p-4">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Badge intent="info">Propuesta</Badge>
+            <span className="text-xl tabular-nums font-bold">{r.local_goals} — {r.away_goals}</span>
+            <Badge intent={intent}>{normStatus(r.status)}</Badge>
+          </div>
 
-            <div className="flex flex-wrap gap-3 text-sm">
+          <div className="mx-auto max-w-xl space-y-3">
+            {/* Porteros */}
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
               {lgk != null && (
                 <div className="inline-flex items-center gap-2 bg-white/5 rounded-lg px-2 py-1 ring-1 ring-white/10">
                   <span className="text-white/50">Portero local</span>
@@ -374,9 +383,10 @@ export default function MatchDetail() {
               )}
             </div>
 
+            {/* Goleadores */}
             {r.goals && Object.keys(r.goals).length > 0 && (
               <div className="space-y-1">
-                <div className="text-white/60 text-xs">Goleadores</div>
+                <div className="text-white/60 text-xs text-center">Goleadores</div>
                 <ul className="flex flex-col gap-1">
                   {Object.entries(r.goals).map(([pid, g]) => {
                     const pl = playerById.get(String(pid));
@@ -395,22 +405,25 @@ export default function MatchDetail() {
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <PillButton
-              onClick={() => handleApprove(r.id)}
-              className="bg-emerald-400/90 hover:bg-emerald-400 text-black ring-0"
-            >
-              ✓ Aprobar
-            </PillButton>
+        {/* Footer con acciones abajo (solo si pendiente) */}
+        {canModerate && (
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end p-3 border-t border-white/10 bg-white/5">
             <PillButton
               onClick={() => handleReject(r.id)}
-              className="bg-rose-400/90 hover:bg-rose-400 text-black ring-0"
+              className="bg-rose-400/90 hover:bg-rose-400 text-black ring-0 w-full sm:w-auto"
             >
               ✕ Rechazar
             </PillButton>
+            <PillButton
+              onClick={() => handleApprove(r.id)}
+              className="bg-emerald-400/90 hover:bg-emerald-400 text-black ring-0 w-full sm:w-auto"
+            >
+              ✓ Aprobar
+            </PillButton>
           </div>
-        </div>
+        )}
       </li>
     );
   }
@@ -430,18 +443,17 @@ export default function MatchDetail() {
         <div className="w-24" />
       </div>
 
-      {!draftId ? (
-        <div className="max-w-5xl mx-auto text-amber-300 bg-amber-300/10 ring-1 ring-amber-300/30 rounded-xl p-4 mb-6">
-          Pasa <b>draftId</b> por query (?draftId=) o por <code>state</code> para cargar las plantillas.
-        </div>
-      ) : null}
-
-      <div className="max-w-5xl mx-auto grid lg:grid-cols-[1.1fr,1fr] gap-6">
+      <div
+        className={
+          "max-w-5xl mx-auto grid gap-6 " +
+          (showForm ? "lg:grid-cols-[1.1fr,1fr]" : "")
+        }
+      >
         {/* Columna izquierda: datos partido + solicitudes */}
         <div className="space-y-4">
           <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-3">
             <div className="flex items-center justify-between">
-                <Field label={`Semana ${game.week}`} />
+              <Field label={`Semana ${game.week}`} />
               <div className="text-3xl font-black tabular-nums">{score}</div>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
@@ -466,209 +478,210 @@ export default function MatchDetail() {
           </div>
         </div>
 
-        {/* Columna derecha: formulario creación */}
-        <div className="space-y-6">
-          <form onSubmit={onCreateRequest} className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-4">
-            <h2 className="font-semibold">Enviar solicitud de resultado</h2>
+        {/* Columna derecha: formulario creación (solo si showForm) */}
+        {showForm && (
+          <div className="space-y-6">
+            <form onSubmit={onCreateRequest} className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-4">
+              <h2 className="font-semibold">Enviar solicitud de resultado</h2>
 
+              {/* Porteros */}
+              <div>
+                <h3 className="block text-sm text-white/70 mb-3">Porteros</h3>
 
-            {/* Porteros */}
-            <div>
-              <h3 className="block text-sm text-white/70 mb-3">Porteros</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* LOCAL */}
+                  <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">{localTeam?.name ?? "Local"}</span>
+                    </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* LOCAL */}
-                <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{localTeam?.name ?? "Local"}</span>
+                    <div className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
+                      <Avatar
+                        size={32}
+                        src={playerById.get(String(localKeeperId))?.sprite}
+                        alt={playerById.get(String(localKeeperId))?.name}
+                      />
+                      <Select
+                        value={localKeeperId}
+                        onChange={(e) => setLocalKeeperId(e.target.value)}
+                        disabled={!localKeepers.length}
+                        required
+                        className="flex-1"
+                      >
+                        <option value="">— Selecciona portero —</option>
+                        {localKeepers.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
-                    <Avatar
-                      size={32}
-                      src={playerById.get(String(localKeeperId))?.sprite}
-                      alt={playerById.get(String(localKeeperId))?.name}
-                    />
-                    <Select
-                      value={localKeeperId}
-                      onChange={(e) => setLocalKeeperId(e.target.value)}
-                      disabled={!localKeepers.length}
-                      required
-                      className="flex-1"
-                    >
-                      <option value="">— Selecciona portero —</option>
-                      {localKeepers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
+                  {/* VISITANTE */}
+                  <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">{awayTeam?.name ?? "Visitante"}</span>
+                    </div>
 
-                {/* VISITANTE */}
-                <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{awayTeam?.name ?? "Visitante"}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
-                    <Avatar
-                      size={32}
-                      src={playerById.get(String(awayKeeperId))?.sprite}
-                      alt={playerById.get(String(awayKeeperId))?.name}
-                    />
-                    <Select
-                      value={awayKeeperId}
-                      onChange={(e) => setAwayKeeperId(e.target.value)}
-                      disabled={!awayKeepers.length}
-                      required
-                      className="flex-1"
-                    >
-                      <option value="">— Selecciona portero —</option>
-                      {awayKeepers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Goleadores (separados por equipo) */}
-            <div>
-              <h3 className="block text-sm text-white/70 mb-3">Goleadores</h3>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* LOCAL */}
-                <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{localTeam?.name ?? "Local"}</span>
-                    <button
-                      type="button"
-                      onClick={addRowLocal}
-                      className="text-sm bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1 ring-1 ring-white/10"
-                    >
-                      + Añadir más goleadores
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {rowsLocal.map((r, i) => {
-                      const pl = r.playerId ? playerById.get(String(r.playerId)) : null;
-                      return (
-                        <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
-                          <Avatar size={32} src={pl?.sprite} alt={pl?.name} />
-
-                          <Select
-                            value={r.playerId}
-                            onChange={(e) => changeRowLocal(i, "playerId", e.target.value)}
-                            className="flex-1"
-                          >
-                            <option value="">— Jugador —</option>
-                            {scorersLocal.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
-                              </option>
-                            ))}
-                          </Select>
-
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              value={r.goals}
-                              onChange={(e) => changeRowLocal(i, "goals", e.target.value)}
-                              className="w-16 bg-white/10 ring-1 ring-white/10 rounded-lg px-2 py-1 text-center tabular-nums"
-                            />
-                          </div>
-
-                          <IconButton onClick={() => removeRowLocal(i)} title="Eliminar" className="text-rose-300">✕</IconButton>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* VISITANTE */}
-                <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">{awayTeam?.name ?? "Visitante"}</span>
-                    <button
-                      type="button"
-                      onClick={addRowAway}
-                      className="text-sm bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1 ring-1 ring-white/10"
-                    >
-                      + Añadir más goleadores
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {rowsAway.map((r, i) => {
-                      const pl = r.playerId ? playerById.get(String(r.playerId)) : null;
-                      return (
-                        <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
-                          <Avatar size={32} src={pl?.sprite} alt={pl?.name} />
-
-                          <Select
-                            value={r.playerId}
-                            onChange={(e) => changeRowAway(i, "playerId", e.target.value)}
-                            className="flex-1"
-                          >
-                            <option value="">— Jugador —</option>
-                            {scorersAway.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
-                              </option>
-                            ))}
-                          </Select>
-
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              min={0}
-                              value={r.goals}
-                              onChange={(e) => changeRowAway(i, "goals", e.target.value)}
-                              className="w-16 bg-white/10 ring-1 ring-white/10 rounded-lg px-2 py-1 text-center tabular-nums"
-                            />
-                          </div>
-
-                          <IconButton onClick={() => removeRowAway(i)} title="Eliminar" className="text-rose-300">✕</IconButton>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
+                      <Avatar
+                        size={32}
+                        src={playerById.get(String(awayKeeperId))?.sprite}
+                        alt={playerById.get(String(awayKeeperId))?.name}
+                      />
+                      <Select
+                        value={awayKeeperId}
+                        onChange={(e) => setAwayKeeperId(e.target.value)}
+                        disabled={!awayKeepers.length}
+                        required
+                        className="flex-1"
+                      >
+                        <option value="">— Selecciona portero —</option>
+                        {awayKeepers.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Avisos de plantillas */}
-            {localTeam && (localTeam.players?.length ?? 0) === 0 && (
-              <div className="text-amber-300 text-sm">El {localTeam.name} no tiene jugadores cargados.</div>
-            )}
-            {awayTeam && (awayTeam.players?.length ?? 0) === 0 && (
-              <div className="text-amber-300 text-sm">El {awayTeam.name} no tiene jugadores cargados.</div>
-            )}
-            {localTeam && !localKeepers.length && (
-              <div className="text-amber-300 text-sm">El {localTeam.name} no tiene porteros asignados.</div>
-            )}
-            {awayTeam && !awayKeepers.length && (
-              <div className="text-amber-300 text-sm">El {awayTeam.name} no tiene porteros asignados.</div>
-            )}
+              {/* Goleadores (separados por equipo) */}
+              <div>
+                <h3 className="block text-sm text-white/70 mb-3">Goleadores</h3>
 
-            <button
-              disabled={creating}
-              className="w-full rounded-xl px-4 py-2.5 bg-amber-400 text-black font-semibold hover:opacity-90 disabled:opacity-60"
-            >
-              {creating ? "Enviando…" : "Enviar solicitud"}
-            </button>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* LOCAL */}
+                  <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">{localTeam?.name ?? "Local"}</span>
+                      <button
+                        type="button"
+                        onClick={addRowLocal}
+                        className="text-sm bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1 ring-1 ring-white/10"
+                      >
+                        {rowsLocal.length ? "+ Añadir más goleadores" : "+ Añadir goleador"}
+                      </button>
+                    </div>
 
-            {createMsg && <div className="text-sm text-white/80 mt-1">{createMsg}</div>}
-            {teamsErr && <div className="text-sm text-amber-300 mt-2">{teamsErr}</div>}
-          </form>
-        </div>
+                    <div className="space-y-2">
+                      {rowsLocal.map((r, i) => {
+                        const pl = r.playerId ? playerById.get(String(r.playerId)) : null;
+                        return (
+                          <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
+                            <Avatar size={32} src={pl?.sprite} alt={pl?.name} />
+
+                            <Select
+                              value={r.playerId}
+                              onChange={(e) => changeRowLocal(i, "playerId", e.target.value)}
+                              className="flex-1"
+                            >
+                              <option value="">— Jugador —</option>
+                              {scorersLocal.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
+                                </option>
+                              ))}
+                            </Select>
+
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.goals}
+                                onChange={(e) => changeRowLocal(i, "goals", e.target.value)}
+                                className="w-16 bg-white/10 ring-1 ring-white/10 rounded-lg px-2 py-1 text-center tabular-nums"
+                              />
+                            </div>
+
+                            <IconButton onClick={() => removeRowLocal(i)} title="Eliminar" className="text-rose-300">✕</IconButton>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* VISITANTE */}
+                  <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/10">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">{awayTeam?.name ?? "Visitante"}</span>
+                      <button
+                        type="button"
+                        onClick={addRowAway}
+                        className="text-sm bg-white/10 hover:bg-white/15 rounded-lg px-2 py-1 ring-1 ring-white/10"
+                      >
+                        {rowsAway.length ? "+ Añadir más goleadores" : "+ Añadir goleador"}
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {rowsAway.map((r, i) => {
+                        const pl = r.playerId ? playerById.get(String(r.playerId)) : null;
+                        return (
+                          <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg p-2 ring-1 ring-white/10">
+                            <Avatar size={32} src={pl?.sprite} alt={pl?.name} />
+
+                            <Select
+                              value={r.playerId}
+                              onChange={(e) => changeRowAway(i, "playerId", e.target.value)}
+                              className="flex-1"
+                            >
+                              <option value="">— Jugador —</option>
+                              {scorersAway.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} {p.position ? `(${p.position})` : ""} (#{p.id})
+                                </option>
+                              ))}
+                            </Select>
+
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.goals}
+                                onChange={(e) => changeRowAway(i, "goals", e.target.value)}
+                                className="w-16 bg-white/10 ring-1 ring-white/10 rounded-lg px-2 py-1 text-center tabular-nums"
+                              />
+                            </div>
+
+                            <IconButton onClick={() => removeRowAway(i)} title="Eliminar" className="text-rose-300">✕</IconButton>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Avisos de plantillas */}
+              {localTeam && (localTeam.players?.length ?? 0) === 0 && (
+                <div className="text-amber-300 text-sm">El {localTeam.name} no tiene jugadores cargados.</div>
+              )}
+              {awayTeam && (awayTeam.players?.length ?? 0) === 0 && (
+                <div className="text-amber-300 text-sm">El {awayTeam.name} no tiene jugadores cargados.</div>
+              )}
+              {localTeam && !localKeepers.length && (
+                <div className="text-amber-300 text-sm">El {localTeam.name} no tiene porteros asignados.</div>
+              )}
+              {awayTeam && !awayKeepers.length && (
+                <div className="text-amber-300 text-sm">El {awayTeam.name} no tiene porteros asignados.</div>
+              )}
+
+              <button
+                disabled={creating}
+                className="w-full rounded-xl px-4 py-2.5 bg-amber-400 text-black font-semibold hover:opacity-90 disabled:opacity-60"
+              >
+                {creating ? "Enviando…" : "Enviar solicitud"}
+              </button>
+
+              {createMsg && <div className="text-sm text-white/80 mt-1">{createMsg}</div>}
+              {teamsErr && <div className="text-sm text-amber-300 mt-2">{teamsErr}</div>}
+            </form>
+          </div>
+        )}
       </div>
     </main>
   );
