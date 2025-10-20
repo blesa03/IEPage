@@ -9,6 +9,7 @@ import {
   rejectMatchResultRequest,
 } from "../api/match";
 import { viewTeam } from "../api/team";
+import { me } from "../api";
 
 // ——— UI components ———
 function Badge({ children, intent = "neutral" }) {
@@ -171,11 +172,11 @@ export default function MatchDetail() {
 
   const parseErr = (e) =>
     (e?.response?.data?.error || e?.response?.data?.message || e?.message || "").toString() || null;
-
+  
   // ——— CARGA PARTIDO + SOLICITUDES ———
   useEffect(() => {
     let alive = true;
-
+    
     const loadMatch = async () => {
       setLoading(true);
       setError("");
@@ -349,8 +350,16 @@ export default function MatchDetail() {
     const lgk = r.local_goalkeeper_id ?? r.local_goalkeeper;   // compat
     const agk = r.away_goalkeeper_id ?? r.away_goalkeeper;     // compat
     const intent = statusIntent(r.status);
-    const s = String(r.status || "").toLowerCase();
-    const canModerate = ["pending", "pendiente", "pending_result"].includes(s);
+    const [user, setUser] = useState(null);
+    const status = String(r.status || "").toLowerCase();
+    const isPending = ["pending", "pendiente", "pending_result"].includes(status);
+    const isOwner = user?.role === "owner";
+
+    useEffect(() => {
+      me().then((res) => setUser(res.data));
+    }, []);
+    const showActions = isOwner && isPending;
+    
     return (
       <li className="rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
         {/* Contenido centrado */}
@@ -413,7 +422,7 @@ export default function MatchDetail() {
         </div>
 
         {/* Footer con acciones abajo (solo si pendiente) */}
-        {canModerate && (
+        {showActions && (
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end p-3 border-t border-white/10 bg-white/5">
             <PillButton
               onClick={() => handleReject(r.id)}
