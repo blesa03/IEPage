@@ -339,6 +339,7 @@ export default function MatchDetail() {
   const hasApproved = reqs.some(
     (r) => ["approved", "aprobada"].includes(String(r?.status || "").toLowerCase())
   );
+  const showRequests = isOwner || canRequest;
 
   const showForm = canRequest && !hasApproved;
 
@@ -475,20 +476,22 @@ export default function MatchDetail() {
             <Field label="Ganador">{winnerLabel}</Field>
           </div>
 
-          {/* ——— Solicitudes SIEMPRE visibles (owner puede ver/aprobar aunque no take_part) ——— */}
-          <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
-            <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
-            {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
-            {!reqs?.length ? (
-              <div className="text-white/60 text-sm">Sin solicitudes.</div>
-            ) : (
-              <ul className="space-y-3">
-                {reqs.map((r) => (
-                  <RequestCard key={r.id} r={r} isOwner={isOwner} />
-                ))}
-              </ul>
-            )}
-          </div>
+
+          {showRequests && (
+            <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
+              <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
+              {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
+              {!reqs?.length ? (
+                <div className="text-white/60 text-sm">Sin solicitudes.</div>
+              ) : (
+                <ul className="space-y-3">
+                  {reqs.map((r) => (
+                    <RequestCard key={r.id} r={r} isOwner={isOwner} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ——— Formulario solo si puede participar y no hay una solicitud ya aprobada ——— */}
