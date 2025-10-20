@@ -208,7 +208,7 @@ def approve_match_result_request(request: HttpRequest, game_result_request_id):
         game.winner.budget += 8000000
         game.winner.points += 3
         
-        loser_team = game.local_team if game.winner == game.local_team else game.away_team
+        loser_team = game.away_team if game.winner == game.local_team else game.local_team
         loser_team.budget += 2000000
         
         game.winner.save(update_fields=['budget', 'points'])
