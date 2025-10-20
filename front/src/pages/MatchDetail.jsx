@@ -9,7 +9,6 @@ import {
   rejectMatchResultRequest,
 } from "../api/match";
 import { viewTeam } from "../api/team";
-import { me } from "../api";
 
 // ——— UI components ———
 function Badge({ children, intent = "neutral" }) {
@@ -136,6 +135,7 @@ export default function MatchDetail() {
   const location = useLocation();
 
   const [canRequest, setCanRequest] = useState(false); // ← flag de permiso
+  const [isOwner, setIsOwner] = useState(false);
 
   const search = new URLSearchParams(location.search);
   const state = location.state || {};
@@ -172,11 +172,11 @@ export default function MatchDetail() {
 
   const parseErr = (e) =>
     (e?.response?.data?.error || e?.response?.data?.message || e?.message || "").toString() || null;
-  
+
   // ——— CARGA PARTIDO + SOLICITUDES ———
   useEffect(() => {
     let alive = true;
-    
+
     const loadMatch = async () => {
       setLoading(true);
       setError("");
@@ -186,7 +186,7 @@ export default function MatchDetail() {
         setGame(data ?? null);
         setLocalTeamId(data?.local_team_id ?? null);
         setAwayTeamId(data?.away_team_id ?? null);
-        // ← usamos take_part del backend
+        setIsOwner(Boolean(data?.is_owner ?? data?.isOwner ?? false));
         setCanRequest(Boolean(data?.take_part ?? data?.takePart ?? false));
       } catch (e) {
         if (!alive) return;
@@ -244,10 +244,10 @@ export default function MatchDetail() {
   const keepersOnly = (ps = []) => ps.filter((p) => isGK(p.position));
   // ——— MEMOS DE JUGADORES ———
   const localKeepers = useMemo(() => keepersOnly(localTeam?.players), [localTeam]);
-  const awayKeepers  = useMemo(() => keepersOnly(awayTeam?.players),  [awayTeam]);
+  const awayKeepers = useMemo(() => keepersOnly(awayTeam?.players), [awayTeam]);
 
   const scorersLocal = useMemo(() => localTeam?.players ?? [], [localTeam]);
-  const scorersAway  = useMemo(() => awayTeam?.players ?? [], [awayTeam]);
+  const scorersAway = useMemo(() => awayTeam?.players ?? [], [awayTeam]);
 
   // Mapa de jugadores por id (ambos equipos)
   const playerById = useMemo(() => {
@@ -311,6 +311,7 @@ export default function MatchDetail() {
   const handleApprove = async (requestId) => {
     try {
       await approveMatchResultRequest(requestId);
+    // opcional: actualizar estado local
       setReqs((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: "approved" } : r)));
     } catch (e) {
       alert(parseErr(e) || "No se pudo aprobar la solicitud.");
@@ -328,15 +329,15 @@ export default function MatchDetail() {
 
   // ——— Render ———
   if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Cargando partido…</div>;
-  if (error)   return <div className="flex items-center justify-center min-h-screen text-rose-300">{error}</div>;
-  if (!game)   return <div className="flex items-center justify-center min-h-screen text-white/70">Partido no encontrado.</div>;
+  if (error) return <div className="flex items-center justify-center min-h-screen text-rose-300">{error}</div>;
+  if (!game) return <div className="flex items-center justify-center min-h-screen text-white/70">Partido no encontrado.</div>;
 
   const showScore = ["finished", "pending_result", "in_progress"].includes(
     String(game.status || "").toLowerCase()
   );
 
   const hasApproved = reqs.some(
-    r => ["approved", "aprobada"].includes(String(r?.status || "").toLowerCase())
+    (r) => ["approved", "aprobada"].includes(String(r?.status || "").toLowerCase())
   );
 
   const showForm = canRequest && !hasApproved;
@@ -346,27 +347,25 @@ export default function MatchDetail() {
     typeof game.winner === "string" ? game.winner : (game.winner?.name ?? game.winner?.id ?? "—");
 
   // Tarjeta de solicitud
-  function RequestCard({ r }) {
-    const lgk = r.local_goalkeeper_id ?? r.local_goalkeeper;   // compat
-    const agk = r.away_goalkeeper_id ?? r.away_goalkeeper;     // compat
+  function RequestCard({ r, isOwner }) {
+    const lgk = r.local_goalkeeper_id ?? r.local_goalkeeper; // compat
+    const agk = r.away_goalkeeper_id ?? r.away_goalkeeper; // compat
     const intent = statusIntent(r.status);
-    const [user, setUser] = useState(null);
     const status = String(r.status || "").toLowerCase();
-    const isPending = ["pending", "pendiente", "pending_result"].includes(status);
-    const isOwner = user?.role === "owner";
 
-    useEffect(() => {
-      me().then((res) => setUser(res.data));
-    }, []);
+    // IMPORTANTE: estado "pendiente" de la SOLICITUD, no del partido
+    const isPending = ["pending", "pendiente"].includes(status);
     const showActions = isOwner && isPending;
-    
+
     return (
       <li className="rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
         {/* Contenido centrado */}
         <div className="p-4">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Badge intent="info">Propuesta</Badge>
-            <span className="text-xl tabular-nums font-bold">{r.local_goals} — {r.away_goals}</span>
+            <span className="text-xl tabular-nums font-bold">
+              {r.local_goals} — {r.away_goals}
+            </span>
             <Badge intent={intent}>{normStatus(r.status)}</Badge>
           </div>
 
@@ -421,7 +420,7 @@ export default function MatchDetail() {
           </div>
         </div>
 
-        {/* Footer con acciones abajo (solo si pendiente) */}
+        {/* Footer con acciones abajo (solo si pendiente y es owner) */}
         {showActions && (
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end p-3 border-t border-white/10 bg-white/5">
             <PillButton
@@ -476,23 +475,23 @@ export default function MatchDetail() {
             <Field label="Ganador">{winnerLabel}</Field>
           </div>
 
-          {canRequest && (
-            <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
-              <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
-              {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
-              {!reqs?.length ? (
-                <div className="text-white/60 text-sm">Sin solicitudes.</div>
-              ) : (
-                <ul className="space-y-3">
-                  {reqs.map((r) => (
-                    <RequestCard key={r.id} r={r} />
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          {/* ——— Solicitudes SIEMPRE visibles (owner puede ver/aprobar aunque no take_part) ——— */}
+          <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
+            <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
+            {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
+            {!reqs?.length ? (
+              <div className="text-white/60 text-sm">Sin solicitudes.</div>
+            ) : (
+              <ul className="space-y-3">
+                {reqs.map((r) => (
+                  <RequestCard key={r.id} r={r} isOwner={isOwner} />
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
+        {/* ——— Formulario solo si puede participar y no hay una solicitud ya aprobada ——— */}
         {showForm && (
           <div className="space-y-6">
             <form onSubmit={onCreateRequest} className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-4">
