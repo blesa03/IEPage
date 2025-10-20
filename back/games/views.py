@@ -66,7 +66,8 @@ def view_match(request: HttpRequest, game_id):
         'away_goals': game.away_goals,
         'winner': game.winner.name if game.winner else None,
         'status': game.status,
-        'take_part': game.local_team.draft_user.user == user or game.away_team.draft_user.user == user or game.draft.league.owner == user
+        'take_part': game.local_team.draft_user.user == user or game.away_team.draft_user.user == user,
+        'is_owner': game.draft.league.owner == user
     }
     
     return JsonResponse(response, safe=False)
