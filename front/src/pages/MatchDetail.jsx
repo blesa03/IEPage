@@ -333,7 +333,13 @@ export default function MatchDetail() {
   const showScore = ["finished", "pending_result", "in_progress"].includes(
     String(game.status || "").toLowerCase()
   );
-  const showForm = canRequest === true;
+
+  const hasApproved = reqs.some(
+    r => ["approved", "aprobada"].includes(String(r?.status || "").toLowerCase())
+  );
+
+  const showForm = canRequest && !hasApproved;
+
   const score = showScore ? `${game?.local_goals ?? "-"} — ${game?.away_goals ?? "-"}` : "—";
   const winnerLabel =
     typeof game.winner === "string" ? game.winner : (game.winner?.name ?? game.winner?.id ?? "—");
@@ -345,7 +351,6 @@ export default function MatchDetail() {
     const intent = statusIntent(r.status);
     const s = String(r.status || "").toLowerCase();
     const canModerate = ["pending", "pendiente", "pending_result"].includes(s);
-
     return (
       <li className="rounded-2xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
         {/* Contenido centrado */}
@@ -449,7 +454,6 @@ export default function MatchDetail() {
           (showForm ? "lg:grid-cols-[1.1fr,1fr]" : "")
         }
       >
-        {/* Columna izquierda: datos partido + solicitudes */}
         <div className="space-y-4">
           <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-3">
             <div className="flex items-center justify-between">
@@ -463,22 +467,23 @@ export default function MatchDetail() {
             <Field label="Ganador">{winnerLabel}</Field>
           </div>
 
-          <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
-            <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
-            {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
-            {!reqs?.length ? (
-              <div className="text-white/60 text-sm">Sin solicitudes.</div>
-            ) : (
-              <ul className="space-y-3">
-                {reqs.map((r) => (
-                  <RequestCard key={r.id} r={r} />
-                ))}
-              </ul>
-            )}
-          </div>
+          {canRequest && (
+            <div className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10">
+              <h2 className="font-semibold mb-3">Solicitudes de resultado</h2>
+              {reqsError && <div className="text-amber-300 text-sm mb-2">{reqsError}</div>}
+              {!reqs?.length ? (
+                <div className="text-white/60 text-sm">Sin solicitudes.</div>
+              ) : (
+                <ul className="space-y-3">
+                  {reqs.map((r) => (
+                    <RequestCard key={r.id} r={r} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Columna derecha: formulario creación (solo si showForm) */}
         {showForm && (
           <div className="space-y-6">
             <form onSubmit={onCreateRequest} className="bg-white/5 rounded-2xl p-4 ring-1 ring-white/10 space-y-4">
