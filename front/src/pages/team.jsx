@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { viewTeam } from "../api/team";
+import { myTeam } from "../api/team";
 
 export default function Team() {
   const { draftId } = useParams(); 
@@ -22,7 +22,7 @@ export default function Team() {
       setLoading(true);
       setError("");
       try {
-        const data = await viewTeam(draftId);
+        const data = await myTeam(draftId);
 
         const grouped = {
           GK: [],

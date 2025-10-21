@@ -1,0 +1,37 @@
+week,local_team,away_team,draft
+1,Alimentación Xhino,Birrarreal FC,7
+1,Manchester Dani,TIRES,7
+1,Barrio Alto,Los barbaros,7
+1,Alimentación Xhino,Manchester Dani,7
+1,Birrarreal FC,Los barbaros,7
+1,TIRES,Barrio Alto,7
+1,Birrarreal FC,Manchester Dani,7
+1,Alimentación Xhino,Barrio Alto,7
+1,TIRES,Los barbaros,7
+2,Manchester Dani,Birrarreal FC,7
+2,Barrio Alto,TIRES,7
+2,Los barbaros,Alimentación Xhino,7
+2,Manchester Dani,Los barbaros,7
+2,TIRES,Alimentación Xhino,7
+2,Birrarreal FC,Barrio Alto,7
+2,Barrio Alto,Manchester Dani,7
+2,Los barbaros,Birrarreal FC,7
+2,TIRES,Alimentación Xhino,7
+3,Alimentación Xhino,Los barbaros,7
+3,Manchester Dani,TIRES,7
+3,Barrio Alto,Birrarreal FC,7
+3,Birrarreal FC,Alimentación Xhino,7
+3,TIRES,Manchester Dani,7
+3,Los barbaros,Barrio Alto,7
+3,Alimentación Xhino,TIRES,7
+3,Manchester Dani,Barrio Alto,7
+3,Birrarreal FC,TIRES,7
+4,Los barbaros,Manchester Dani,7
+4,Alimentación Xhino,Birrarreal FC,7
+4,TIRES,Barrio Alto,7
+4,Birrarreal FC,Manchester Dani,7
+4,Barrio Alto,Alimentación Xhino,7
+4,Los barbaros,TIRES,7
+4,Manchester Dani,Alimentación Xhino,7
+4,Los barbaros,Birrarreal FC,7
+4,Barrio Alto,Manchester Dani,7
