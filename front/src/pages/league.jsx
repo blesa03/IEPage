@@ -138,6 +138,14 @@ export default function League() {
           <div className="text-xl font-semibold">Clasificación</div>
           <div className="text-white/70 mt-1">Estadísticas y posiciones</div>
         </Link>
+        <Link
+          to={`/games/league/${league.id}?draftId=${league.currentDraftId ?? ""}`}
+          className="rounded-2xl px-6 py-6 border border-white/10 bg-white/5 hover:bg-white/10 transition shadow-sm"
+        >
+          <div className="text-xl font-semibold">Partidos</div>
+          <div className="text-white/70 mt-1">Visualiza los partidos</div>
+        </Link>
+
 
         
 
