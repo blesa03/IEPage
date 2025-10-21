@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'market',
     'users',
     'league',
+    'games',
 ]
 
 
