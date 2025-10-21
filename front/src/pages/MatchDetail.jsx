@@ -86,8 +86,8 @@ function Select({ className = "", children, ...props }) {
       <select
         {...props}
         className={
-          "block w-full appearance-none bg-white/10 text-white " +
-          "ring-1 ring-white/10 rounded-lg px-3 py-2 pr-9 " +
+          "block w-full appearance-none bg-gray-700 text-white" +
+          "ring-1 rounded-lg px-3 py-2 pr-9 " +
           "focus:outline-none focus:ring-2 focus:ring-amber-400/40 " +
           "disabled:opacity-60"
         }
