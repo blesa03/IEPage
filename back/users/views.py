@@ -1,5 +1,6 @@
 from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.middleware.csrf import get_token
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
 import json
 
@@ -68,3 +69,7 @@ def me(request: HttpRequest):
         return JsonResponse({'error': 'No autenticado'}, status=401)
     user = request.user
     return JsonResponse({'id': user.id, 'username': user.username, 'role': getattr(user, 'role', 'player')})
+
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({'csrfToken': get_token(request)})
