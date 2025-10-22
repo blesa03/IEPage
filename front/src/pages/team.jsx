@@ -11,7 +11,6 @@ import {
   useDroppable,
   pointerWithin,
   rectIntersection,
-  closestCenter,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -20,17 +19,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-/* ---------- Estilos de elemento ---------- */
+/* ---------- Estilos / badges ---------- */
 const ELEMENT_STYLES = {
-  Fire: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
-  Wind: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-  Earth: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
-  Wood: "bg-lime-500/15 text-lime-300 ring-1 ring-inset ring-lime-500/30",
-  default: "bg-white/10 text-white/70 ring-1 ring-inset ring-white/20",
+  Fire: "bg-rose-700/35 text-rose-200 ring-1 ring-rose-400/40",
+  Wind: "bg-teal-700/35 text-teal-200 ring-1 ring-teal-400/40",
+  Earth: "bg-amber-700/35 text-amber-200 ring-1 ring-amber-400/40",
+  Wood: "bg-green-700/35 text-green-200 ring-1 ring-green-400/40",
+  default: "bg-slate-700/35 text-white/85 ring-1 ring-slate-400/40",
 };
-const badge = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
+const badgeClass = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 
-/* ---------- Funciones auxiliares ---------- */
 function normalizeUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -42,41 +40,53 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Componente de fila de jugador ---------- */
-function PlayerRow({ player }) {
+/* ---------- Player Card (cristal + badges arriba, img pequeña) ---------- */
+function PlayerCard({ player }) {
+  const value =
+    "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
+
   return (
-    <div className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 w-full">
-      <div className="flex items-center gap-3 min-w-0">
+    <div
+      className={[
+        "relative w-28 sm:w-32 rounded-2xl",
+        "bg-white/10 backdrop-blur-md",
+        "border border-white/15 ring-1 ring-white/10",
+        "shadow-lg hover:shadow-xl hover:bg-white/12 transition",
+        "px-2 pt-5 pb-3",
+      ].join(" ")}
+    >
+      {/* Badges en la parte superior de la card (no sobre la imagen) */}
+      <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-white/90">
+        {player.position}
+      </div>
+      <div className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md ${badgeClass(player.element)}`}>
+        {player.element || "—"}
+      </div>
+
+      {/* Imagen en recuadro claro y más pequeña */}
+      <div className="rounded-xl bg-white/20 border border-white/20 mx-auto w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] flex items-center justify-center overflow-hidden">
         {player.sprite ? (
           <img
             src={player.sprite}
             alt={player.name}
-            className="w-10 h-10 rounded object-cover shrink-0"
+            className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] object-cover rounded-lg"
             loading="lazy"
           />
         ) : (
-          <div className="w-10 h-10 rounded bg-white/10 shrink-0" />
+          <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-lg bg-white/10" />
         )}
-        <div className="min-w-0">
-          <p className="truncate">{player.name}</p>
-          <p className="text-xs text-white/50">{player.position}</p>
-        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${badge(player.element)}`}>
-          {player.element || "—"}
-        </span>
-        {"value" in player && (
-          <span className="text-white/70">
-            {toNumber(player.value).toLocaleString()}€
-          </span>
-        )}
+
+      {/* Nombre y valor */}
+      <div className="mt-2 text-center px-1">
+        <div className="text-sm font-semibold truncate">{player.name}</div>
+        {value && <div className="text-xs text-white/70 mt-0.5">{value}</div>}
       </div>
     </div>
   );
 }
 
-/* ---------- Sortable player ---------- */
+/* ---------- Sortable wrapper ---------- */
 function SortablePlayer({ id, player }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
@@ -84,7 +94,7 @@ function SortablePlayer({ id, player }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.5 : 1,
     cursor: "grab",
     width: "100%",
     minWidth: "100%",
@@ -92,40 +102,21 @@ function SortablePlayer({ id, player }) {
   };
 
   return (
-    <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <PlayerRow player={player} />
-    </li>
-  );
-}
-
-/* ---------- Contenedor droppable ---------- */
-function DroppableList({ id, itemsIds, children }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div
-      ref={setNodeRef}
-      className={`min-h-[56px] rounded-lg border p-2 transition ${
-        isOver ? "border-white/30 bg-white/5" : "border-white/10"
-      }`}
-    >
-      <SortableContext items={itemsIds} strategy={rectSortingStrategy}>
-        <ul className="space-y-2">{children}</ul>
-      </SortableContext>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <PlayerCard player={player} />
     </div>
   );
 }
 
-/* ---------- Skeleton ---------- */
-function RowSkeleton() {
+/* ---------- Droppable list ---------- */
+function DroppableList({ id, itemsIds, children }) {
+  const { setNodeRef } = useDroppable({ id });
   return (
-    <li className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded bg-white/10" />
-        <div className="h-4 w-28 bg-white/10 rounded" />
-      </div>
-      <div className="h-4 w-16 bg-white/10 rounded" />
-      <div className="h-4 w-20 bg-white/10 rounded" />
-    </li>
+    <div ref={setNodeRef}>
+      <SortableContext items={itemsIds} strategy={rectSortingStrategy}>
+        {children}
+      </SortableContext>
+    </div>
   );
 }
 
@@ -134,12 +125,6 @@ export default function Team() {
   const { draftId } = useParams();
   const nav = useNavigate();
 
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [activeId, setActiveId] = useState(null);
-  const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
-
-  const LIMITS = { starters: 11, bench: 5, reserves: Infinity };
   const [team, setTeam] = useState({
     starters: [],
     bench: [],
@@ -147,49 +132,42 @@ export default function Team() {
     name: "",
     budget: "0",
   });
+  const [activeId, setActiveId] = useState(null);
+  const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
-  /* ---------- Cargar equipo ---------- */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      setError("");
       try {
         const data = await myTeam(draftId);
-        const all = (data.players || []).map((p) => ({
+        const players = (data.players || []).map((p) => ({
           ...p,
-          element: p.element === "Air" ? "Wind" : p.element, // ✅ Air → Wind
+          element: p.element === "Air" ? "Wind" : p.element, // normaliza Air → Wind
           sprite: normalizeUrl(p.sprite),
           value: toNumber(p.value),
         }));
-
-        const starters = all.slice(0, 11);
-        const bench = all.slice(11, 16);
-        const reserves = all.slice(16);
-
         setTeam({
-          starters,
-          bench,
-          reserves,
+          starters: players.slice(0, 11),
+          bench: players.slice(11, 16),
+          reserves: players.slice(16),
           name: data.name ?? "",
           budget: data.budget ?? "0",
         });
-      } catch (e) {
-        console.error(e);
-        setError("No se pudo cargar el equipo.");
       } finally {
         setLoading(false);
       }
     };
-
     load();
   }, [draftId]);
 
-  /* ---------- Totales ---------- */
   const totals = useMemo(() => {
     const all = [...team.starters, ...team.bench, ...team.reserves];
-    const totalValue = all.reduce((acc, p) => acc + toNumber(p.value), 0);
+    const totalValue = all.reduce((a, p) => a + toNumber(p.value), 0);
     const budgetNum = toNumber(team.budget);
     const remaining = Math.max(budgetNum - totalValue, 0);
     return {
@@ -204,9 +182,7 @@ export default function Team() {
     };
   }, [team]);
 
-  /* ---------- Funciones auxiliares ---------- */
-  const containers = ["starters", "bench", "reserves"];
-
+  /* ---------- DnD helpers (swap) ---------- */
   const findItem = (id) => {
     const prefix = id[0];
     const key = prefix === "s" ? "starters" : prefix === "b" ? "bench" : "reserves";
@@ -221,7 +197,6 @@ export default function Team() {
     return rectIntersection(args);
   };
 
-  /* ---------- Drag & Drop ---------- */
   const handleDragStart = (e) => {
     setActiveId(e.active.id);
     const rect = e.active.rect?.current?.translated || e.active.rect?.current?.initial;
@@ -237,18 +212,16 @@ export default function Team() {
     const from = findItem(active.id);
     const to = findItem(over.id);
 
-    // 1. Si suelto sobre otro jugador -> SWAP
     if (to.item) {
+      // Intercambio
       setTeam((prev) => {
         const next = { ...prev };
         const fromList = [...next[from.key]];
         const toList = from.key === to.key ? fromList : [...next[to.key]];
         const a = from.item;
         const b = to.item;
-
         fromList[from.index] = b;
         toList[to.index] = a;
-
         next[from.key] = fromList;
         next[to.key] = toList;
         return next;
@@ -256,40 +229,56 @@ export default function Team() {
       return;
     }
 
-    // 2. Si suelto en un contenedor vacío -> mover
+    // mover a contenedor vacío (si ocurre)
+    const containers = ["starters", "bench", "reserves"];
     const container = containers.find((c) => c === over.id);
     if (container) {
+      const LIMITS = { starters: 11, bench: 5, reserves: Infinity };
       if (team[container].length >= LIMITS[container]) return;
       setTeam((prev) => {
         const next = { ...prev };
-        const fromArr = [...next[from.key]];
-        const player = fromArr.splice(from.index, 1)[0];
-        next[from.key] = fromArr;
+        const src = [...next[from.key]];
+        const [player] = src.splice(from.index, 1);
+        next[from.key] = src;
         next[container] = [...next[container], player];
         return next;
       });
     }
   };
 
-  /* ---------- Loading ---------- */
   if (loading) {
     return (
-      <main className="p-5 bg-slate-950 min-h-screen text-white">
-        <div className="text-center">Cargando equipo...</div>
+      <main className="p-5 bg-slate-950 min-h-screen text-white flex items-center justify-center">
+        Cargando equipo…
       </main>
     );
   }
 
-  /* ---------- UI ---------- */
-  const sections = [
-    { id: "starters", label: "Titulares", limit: 11 },
-    { id: "bench", label: "Banquillo", limit: 5 },
-    { id: "reserves", label: "Reserva", limit: "∞" },
+  /* ---------- Layout del campo (invertido: GK abajo) ---------- */
+  // Usamos una zona interior (inset 5%) para evitar recortes en bordes.
+  // Las coordenadas (top/left en %) se calculan dentro de esa zona segura.
+  const fieldPositions = [
+    // Línea de delanteros (arriba)
+    { top: 8, left: 35 },
+    { top: 8, left: 65 },
+    // Mediapuntas / extremos
+    { top: 25, left: 20 },
+    { top: 25, left: 50 },
+    { top: 25, left: 80 },
+    // Mediocampo
+    { top: 45, left: 30 },
+    { top: 45, left: 70 },
+    // Defensa
+    { top: 65, left: 15 },
+    { top: 65, left: 50 },
+    { top: 65, left: 85 },
+    // Portero (abajo)
+    { top: 88, left: 50 },
   ];
 
   return (
     <main className="p-5 bg-slate-950 min-h-screen text-white">
-      <div className="max-w-6xl mx-auto mb-6 text-center">
+      <div className="max-w-6xl mx-auto text-center mb-6">
         <button
           onClick={() => nav(-1)}
           className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
@@ -310,31 +299,78 @@ export default function Team() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="max-w-5xl mx-auto grid gap-6">
-          {sections.map((sec) => (
-            <section key={sec.id} className="bg-white/5 rounded-xl p-4 shadow">
-              <header className="flex items-center justify-between mb-3">
-                <h2 className="text-xl font-semibold">{sec.label}</h2>
-                <div className="text-xs text-white/60">
-                  {team[sec.id].length}/{sec.limit} · Valor:{" "}
-                  {totals.byBlock[sec.id].toLocaleString()}€
-                </div>
-              </header>
-
-              <DroppableList id={sec.id} itemsIds={team[sec.id].map((p) => `${sec.id[0]}-${p.id}`)}>
-                {team[sec.id].map((p) => (
-                  <SortablePlayer key={`${sec.id[0]}-${p.id}`} id={`${sec.id[0]}-${p.id}`} player={p} />
-                ))}
-                {team[sec.id].length === 0 && (
-                  <p className="text-white/50 text-sm py-4 text-center">
-                    Arrastra jugadores aquí.
-                  </p>
-                )}
-              </DroppableList>
-            </section>
-          ))}
+        {/* CAMPO de fútbol con zona segura interior */}
+        <div
+          className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
+          style={{
+            backgroundImage: "url('/campo_futbol.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            width: "100%",
+            maxWidth: "780px",
+            height: "780px",
+          }}
+        >
+          {/* Zona segura (inset 5%) para evitar recortes */}
+          <div className="absolute" style={{ inset: "5%" }}>
+            <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
+              {team.starters.map((p, i) => {
+                const pos = fieldPositions[i] || { top: 50, left: 50 };
+                return (
+                  <div
+                    key={`s-${p.id}`}
+                    style={{
+                      position: "absolute",
+                      top: `${pos.top}%`,
+                      left: `${pos.left}%`,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
+                    <SortablePlayer id={`s-${p.id}`} player={p} />
+                  </div>
+                );
+              })}
+            </DroppableList>
+          </div>
         </div>
 
+        {/* BANQUILLO / RESERVA */}
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
+          <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
+            <header className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Banquillo</h2>
+              <span className="text-xs text-white/60">
+                {team.bench.length}/5 · Valor: {totals.byBlock.bench.toLocaleString()}€
+              </span>
+            </header>
+            <DroppableList id="bench" itemsIds={team.bench.map((p) => `b-${p.id}`)}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {team.bench.map((p) => (
+                  <SortablePlayer key={`b-${p.id}`} id={`b-${p.id}`} player={p} />
+                ))}
+              </div>
+            </DroppableList>
+          </section>
+
+          <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
+            <header className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Reserva</h2>
+              <span className="text-xs text-white/60">
+                {team.reserves.length} jugadores · Valor:{" "}
+                {totals.byBlock.reserves.toLocaleString()}€
+              </span>
+            </header>
+            <DroppableList id="reserves" itemsIds={team.reserves.map((p) => `r-${p.id}`)}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {team.reserves.map((p) => (
+                  <SortablePlayer key={`r-${p.id}`} id={`r-${p.id}`} player={p} />
+                ))}
+              </div>
+            </DroppableList>
+          </section>
+        </div>
+
+        {/* Overlay (dejamos el tema visual para más adelante) */}
         <DragOverlay>
           {activeId ? (
             (() => {
@@ -344,7 +380,7 @@ export default function Team() {
               const player = team[key].find((p) => p.id === idNum);
               return player ? (
                 <div style={overlayStyle}>
-                  <PlayerRow player={player} />
+                  <PlayerCard player={player} />
                 </div>
               ) : null;
             })()
