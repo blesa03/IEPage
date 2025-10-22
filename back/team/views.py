@@ -2,8 +2,8 @@ from django.http import JsonResponse, HttpRequest
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
 from django.db.models import Prefetch
-
-from draft.models import Draft
+import json
+from django.db import transaction
 from users.models import DraftUser
 from team.models import Team
 from players.models import DraftPlayer
@@ -102,3 +102,57 @@ def view_team(request: HttpRequest, draft_id: int, team_id: int):
         "players": players_payload,
     }
     return JsonResponse(response)
+
+@transaction.atomic
+def set_player_release_clausule(request: HttpRequest, draft_player_id: int):
+    if request.method != 'PATCH':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads((request.body or b"{}").decode("utf-8")) or {}
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    
+    release_clausule = data.get('release_clausule')
+    
+    if not release_clausule:
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+    
+    # Bloqueamos el jugador (para evitar múltiples negociaciones simultáneas)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player_id)
+    
+    team = Team.objects.select_for_update().get(id=draft_player.team.id)
+    
+    if draft_player.release_clause:
+        team.clause_budget += draft_player.release_clause
+    
+    team.clause_budget -= release_clausule
+    draft_player.release_clause = release_clausule
+    
+    team.save(update_fields=['clause_budget'])
+    draft_player.save(update_fields=['release_clause'])
+    
+    return JsonResponse({'message': 'Cláusula actualizada correctamente'})
+
+@transaction.atomic
+def remove_player_release_clausule(request: HttpRequest, draft_player_id: int):
+    if request.method != 'PATCH':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Bloqueamos el jugador (para evitar múltiples negociaciones simultáneas)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player_id)
+    
+    if not draft_player.release_clause:
+        return JsonResponse({'error': 'El jugador no tiene cláusula'}, status=409)
+    
+    team = Team.objects.select_for_update().get(id=draft_player.team.id)
+    
+    draft_player.release_clause = None
+    team.clause_budget += draft_player.release_clause
+    
+    draft_player.save(update_fields=['release_clause'])
+    team.save(update_fields=['clause_budget'])
+    
+    return JsonResponse({'message': 'Cláusula eliminada correctamente'})
+    
+        

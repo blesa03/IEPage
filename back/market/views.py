@@ -349,7 +349,7 @@ def pay_player_release_clausule(request: HttpRequest):
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
     
     # Bloqueamos el jugador (para evitar múltiples negociaciones simultáneas)
-    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player.id)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player_id)
     
     try:
         draft_user = DraftUser.objects.get(user_id=request.user.id, draft=draft_player.draft)

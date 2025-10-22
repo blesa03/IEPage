@@ -23,7 +23,7 @@ class DraftPlayer(models.Model):
 	name = models.CharField(max_length=100)
 	draft = models.ForeignKey('draft.Draft', on_delete=models.CASCADE, related_name='players', null=True, blank=True)
  
-	release_clause = models.DecimalField(default=0.0, max_digits=100, decimal_places=2)
+	release_clause = models.DecimalField(null=True, blank=True, max_digits=100, decimal_places=2)
 
 	def __str__(self):
 		return self.name
