@@ -40,56 +40,68 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Player Card (nuevo diseño) ---------- */
+/* ---------- Player Card (nuevo diseño mejorado) ---------- */
 function PlayerCard({ player }) {
-  const value = "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
+  const value =
+    "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
+
+  // Paleta de colores complementaria a la base oscura
+  const ELEMENT_COLORS = {
+    Fire: "bg-rose-700/30 text-rose-300 ring-1 ring-rose-400/40",
+    Wind: "bg-teal-700/30 text-teal-300 ring-1 ring-teal-400/40",
+    Earth: "bg-yellow-700/30 text-yellow-200 ring-1 ring-yellow-400/40",
+    Wood: "bg-green-700/30 text-green-200 ring-1 ring-green-400/40",
+    default: "bg-slate-700/30 text-white/80 ring-1 ring-slate-400/40",
+  };
+
+  const badgeClass =
+    ELEMENT_COLORS[player.element] || ELEMENT_COLORS.default;
 
   return (
     <div
       className={[
         "relative w-28 sm:w-32",
         "rounded-2xl",
-        "bg-white/10",
-        "backdrop-blur-md",
-        "border border-white/15",
-        "ring-1 ring-white/10",
-        "shadow-lg",
-        "hover:shadow-xl hover:bg-white/12 transition",
+        "bg-white/10 backdrop-blur-md",
+        "border border-white/15 ring-1 ring-white/10",
+        "shadow-lg hover:shadow-xl hover:bg-white/15 transition",
+        "flex flex-col items-center justify-between",
+        "p-2 pb-3",
       ].join(" ")}
     >
-      {/* Badges superiores */}
-      <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white/90">
-        {player.position}
-      </div>
-      <div
-        className={[
-          "absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full",
-          badgeClass(player.element),
-        ].join(" ")}
-      >
-        {player.element || "—"}
+      {/* Imagen más pequeña en fondo claro */}
+      <div className="rounded-xl bg-white/20 border border-white/20 flex items-center justify-center overflow-hidden w-20 h-20 sm:w-24 sm:h-24">
+        {player.sprite ? (
+          <img
+            src={player.sprite}
+            alt={player.name}
+            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-white/10" />
+        )}
       </div>
 
-      {/* Imagen en recuadro más claro */}
-      <div className="p-2">
-        <div className="rounded-xl bg-white/20 border border-white/20 aspect-square flex items-center justify-center overflow-hidden">
-          {player.sprite ? (
-            <img
-              src={player.sprite}
-              alt={player.name}
-              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-white/15" />
-          )}
+      {/* Sección inferior (contenedor conjunto) */}
+      <div className="w-full mt-2 px-1 flex flex-col items-center text-center">
+        {/* Fila principal */}
+        <div className="flex justify-between items-center w-full text-[11px] font-medium text-white/90 mb-1">
+          <span className="px-2 py-0.5 rounded-md bg-white/15 border border-white/20 uppercase">
+            {player.position}
+          </span>
+          <span className="text-sm font-semibold truncate max-w-[60%]">
+            {player.name}
+          </span>
+          <span className={`px-2 py-0.5 rounded-md ${badgeClass}`}>
+            {player.element || "—"}
+          </span>
         </div>
 
-        {/* Nombre y valor */}
-        <div className="mt-2 text-center px-1">
-          <div className="text-sm font-semibold truncate">{player.name}</div>
-          {value && <div className="text-xs text-white/70 mt-0.5">{value}</div>}
-        </div>
+        {/* Valor de mercado */}
+        {value && (
+          <div className="text-xs text-white/70 mt-0.5">{value}</div>
+        )}
       </div>
     </div>
   );
@@ -305,7 +317,7 @@ export default function Team() {
         <div
           className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
-            backgroundImage: "url('/campo_futbol.jpg')",
+            backgroundImage: "url('https://i.pinimg.com/564x/02/f0/a0/02f0a04d141f9159906da402d942ec83.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
             width: "100%",
