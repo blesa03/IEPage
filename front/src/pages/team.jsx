@@ -2,28 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { myTeam } from "../api/team";
 
-// Mapas de etiquetas/estilos
-const POSITIONS = [
-  { key: "GK", label: "Portero" },
-  { key: "DF", label: "Defensas" },
-  { key: "MF", label: "Centrocampistas" },
-  { key: "FW", label: "Delanteros" },
-];
-
+// Badges de elemento
 const ELEMENT_STYLES = {
   Fire: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   Wind: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   Earth: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   Wood: "bg-lime-500/15 text-lime-300 ring-1 ring-inset ring-lime-500/30",
-  // fallback
   default: "bg-white/10 text-white/70 ring-1 ring-inset ring-white/20",
 };
 
-function badgeClass(el) {
+function badge(el) {
   return ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 }
 
-// Normaliza URL de imagen: si viene relativa, la prefija con el origen del API
 function normalizeUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
@@ -36,7 +27,6 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-// Skeleton simple para listas
 function RowSkeleton() {
   return (
     <li className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 animate-pulse">
@@ -53,15 +43,15 @@ function RowSkeleton() {
 export default function Team() {
   const { draftId } = useParams();
   const nav = useNavigate();
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Estructura por bloques competitivos
   const [team, setTeam] = useState({
-    GK: [],
-    DF: [],
-    MF: [],
-    FW: [],
-    substitutes: [],
+    starters: [],     // 11
+    bench: [],        // 5
+    reserves: [],     // resto
     name: "",
     budget: "0",
   });
@@ -72,28 +62,24 @@ export default function Team() {
     try {
       const data = await myTeam(draftId);
 
-      const grouped = {
-        GK: [],
-        DF: [],
-        MF: [],
-        FW: [],
-        substitutes: [],
+      // Normaliza jugadores manteniendo orden original del backend
+      const all = (data.players || []).map((p) => ({
+        ...p,
+        sprite: normalizeUrl(p.sprite),
+        value: toNumber(p.value),
+      }));
+
+      const starters = all.slice(0, 11);
+      const bench = all.slice(11, 16);
+      const reserves = all.slice(16);
+
+      setTeam({
+        starters,
+        bench,
+        reserves,
         name: data.name ?? "",
         budget: data.budget ?? "0",
-      };
-
-      data.players?.forEach((p) => {
-        const pos = p.position;
-        const player = {
-          ...p,
-          sprite: normalizeUrl(p.sprite),
-          value: toNumber(p.value),
-        };
-        if (grouped[pos]) grouped[pos].push(player);
-        else grouped.substitutes.push(player);
       });
-
-      setTeam(grouped);
     } catch (e) {
       console.error(e);
       setError("No se pudo cargar el equipo.");
@@ -108,11 +94,21 @@ export default function Team() {
   }, [draftId]);
 
   const totals = useMemo(() => {
-    const all = [...team.GK, ...team.DF, ...team.MF, ...team.FW, ...team.substitutes];
+    const all = [...team.starters, ...team.bench, ...team.reserves];
     const totalValue = all.reduce((acc, p) => acc + toNumber(p.value), 0);
     const budgetNum = toNumber(team.budget);
     const remaining = Math.max(budgetNum - totalValue, 0);
-    return { totalValue, remaining, budgetNum };
+
+    const tStarters = team.starters.reduce((a, p) => a + toNumber(p.value), 0);
+    const tBench = team.bench.reduce((a, p) => a + toNumber(p.value), 0);
+    const tRes = team.reserves.reduce((a, p) => a + toNumber(p.value), 0);
+
+    return {
+      totalValue,
+      budgetNum,
+      remaining,
+      byBlock: { starters: tStarters, bench: tBench, reserves: tRes },
+    };
   }, [team]);
 
   if (loading) {
@@ -126,24 +122,32 @@ export default function Team() {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto grid gap-6 sm:grid-cols-2">
-          {POSITIONS.map((pos) => (
-            <div key={pos.key} className="bg-white/5 rounded-xl p-4 shadow">
-              <div className="h-6 w-40 bg-white/10 rounded mb-3" />
-              <ul className="space-y-2">
-                <RowSkeleton />
-                <RowSkeleton />
-                <RowSkeleton />
-              </ul>
-            </div>
-          ))}
-          <div className="bg-white/5 rounded-xl p-4 shadow">
-            <div className="h-6 w-32 bg-white/10 rounded mb-3" />
+        <div className="max-w-5xl mx-auto grid gap-6">
+          <section className="bg-white/5 rounded-xl p-4 shadow">
+            <div className="h-6 w-40 bg-white/10 rounded mb-3" />
+            <ul className="space-y-2">
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
+            </ul>
+          </section>
+          <section className="bg-white/5 rounded-xl p-4 shadow">
+            <div className="h-6 w-40 bg-white/10 rounded mb-3" />
+            <ul className="space-y-2">
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
+            </ul>
+          </section>
+          <section className="bg-white/5 rounded-xl p-4 shadow">
+            <div className="h-6 w-40 bg-white/10 rounded mb-3" />
             <ul className="space-y-2">
               <RowSkeleton />
               <RowSkeleton />
             </ul>
-          </div>
+          </section>
         </div>
       </main>
     );
@@ -194,96 +198,110 @@ export default function Team() {
         )}
       </div>
 
-      {/* Grid principal */}
-      <div className="max-w-5xl mx-auto grid gap-6 sm:grid-cols-2">
-        {/* Titulares por línea */}
-        {POSITIONS.map((pos) => {
-          const players = team[pos.key] || [];
-          return (
-            <section
-              key={pos.key}
-              className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition"
-            >
-              <header className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold">{pos.label}</h2>
-                <span className="text-xs text-white/60">
-                  {players.length} jugador{players.length === 1 ? "" : "es"}
-                </span>
-              </header>
-
-              {players.length === 0 ? (
-                <div className="text-white/50 text-sm py-6 text-center">
-                  Aún no hay {pos.label.toLowerCase()}.
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {players.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {p.sprite ? (
-                          <img
-                            src={p.sprite}
-                            alt={p.name}
-                            className="w-10 h-10 rounded object-cover shrink-0"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded bg-white/10 shrink-0" />
-                        )}
-                        <span className="truncate">{p.name}</span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${badgeClass(p.element)}`}>
-                          {p.element || "—"}
-                        </span>
-                        <span className="text-white/70">
-                          {toNumber(p.value).toLocaleString()}€
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-
-        {/* Banquillo */}
-        <section className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition sm:col-span-2">
-          <h2 className="text-xl font-semibold mb-2 text-center">Banquillo</h2>
-
-          {team.substitutes.length === 0 ? (
-            <div className="text-white/50 text-sm py-6 text-center">
-              No hay jugadores en el banquillo.
+      {/* Bloques: Titulares, Banquillo, Reserva */}
+      <div className="max-w-5xl mx-auto grid gap-6">
+        {/* Titulares */}
+        <section className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition">
+          <header className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-semibold">Titulares</h2>
+            <div className="text-xs text-white/60">
+              {team.starters.length}/11 · Valor: {totals.byBlock.starters.toLocaleString()}€
             </div>
+          </header>
+
+          {team.starters.length === 0 ? (
+            <div className="text-white/50 text-sm py-6 text-center">Aún no hay titulares.</div>
           ) : (
-            <ul className="space-y-2 max-w-3xl mx-auto">
-              {team.substitutes.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2"
-                >
+            <ul className="space-y-2">
+              {team.starters.map((p) => (
+                <li key={p.id} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
                   <div className="flex items-center gap-3 min-w-0">
                     {p.sprite ? (
-                      <img
-                        src={p.sprite}
-                        alt={p.name}
-                        className="w-10 h-10 rounded object-cover shrink-0"
-                        loading="lazy"
-                      />
+                      <img src={p.sprite} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0" loading="lazy" />
                     ) : (
                       <div className="w-10 h-10 rounded bg-white/10 shrink-0" />
                     )}
-                    <span className="truncate">{p.name}</span>
+                    <div className="min-w-0">
+                      <p className="truncate">{p.name}</p>
+                      <p className="text-xs text-white/50">{p.position}</p>
+                    </div>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${badge(p.element)}`}>{p.element || "—"}</span>
+                    <span className="text-white/70">{toNumber(p.value).toLocaleString()}€</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${badgeClass(p.element)}`}>
-                    {p.element || "—"}
-                  </span>
+        {/* Banquillo */}
+        <section className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition">
+          <header className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-semibold">Banquillo</h2>
+            <div className="text-xs text-white/60">
+              {team.bench.length}/5 · Valor: {totals.byBlock.bench.toLocaleString()}€
+            </div>
+          </header>
+
+          {team.bench.length === 0 ? (
+            <div className="text-white/50 text-sm py-6 text-center">No hay jugadores en el banquillo.</div>
+          ) : (
+            <ul className="space-y-2">
+              {team.bench.map((p) => (
+                <li key={p.id} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {p.sprite ? (
+                      <img src={p.sprite} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0" loading="lazy" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-white/10 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate">{p.name}</p>
+                      <p className="text-xs text-white/50">{p.position}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${badge(p.element)}`}>{p.element || "—"}</span>
+                    <span className="text-white/70">{toNumber(p.value).toLocaleString()}€</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Reserva */}
+        <section className="bg-white/5 rounded-xl p-4 shadow hover:bg-white/10 transition">
+          <header className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-semibold">Reserva</h2>
+            <div className="text-xs text-white/60">
+              {team.reserves.length} jugadores · Valor: {totals.byBlock.reserves.toLocaleString()}€
+            </div>
+          </header>
+
+          {team.reserves.length === 0 ? (
+            <div className="text-white/50 text-sm py-6 text-center">No hay jugadores en reserva.</div>
+          ) : (
+            <ul className="space-y-2">
+              {team.reserves.map((p) => (
+                <li key={p.id} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {p.sprite ? (
+                      <img src={p.sprite} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0" loading="lazy" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-white/10 shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate">{p.name}</p>
+                      <p className="text-xs text-white/50">{p.position}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${badge(p.element)}`}>{p.element || "—"}</span>
+                    <span className="text-white/70">{toNumber(p.value).toLocaleString()}€</span>
+                  </div>
                 </li>
               ))}
             </ul>
