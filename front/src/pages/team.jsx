@@ -19,15 +19,15 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-/* ---------- Estilos de elemento ---------- */
+/* ---------- Estilos / badges ---------- */
 const ELEMENT_STYLES = {
-  Fire: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
-  Wind: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-  Earth: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
-  Wood: "bg-lime-500/15 text-lime-300 ring-1 ring-inset ring-lime-500/30",
-  default: "bg-white/10 text-white/70 ring-1 ring-inset ring-white/20",
+  Fire: "bg-red-500/20 text-red-200 ring-1 ring-inset ring-red-400/30",
+  Wind: "bg-emerald-500/20 text-emerald-200 ring-1 ring-inset ring-emerald-400/30",
+  Earth: "bg-amber-500/20 text-amber-200 ring-1 ring-inset ring-amber-400/30",
+  Wood: "bg-lime-500/20 text-lime-200 ring-1 ring-inset ring-lime-400/30",
+  default: "bg-white/15 text-white/80 ring-1 ring-inset ring-white/20",
 };
-const badge = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
+const badgeClass = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 
 function normalizeUrl(url) {
   if (!url) return null;
@@ -40,25 +40,62 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Componente del jugador ---------- */
+/* ---------- Player Card (nuevo diseño) ---------- */
 function PlayerCard({ player }) {
+  const value = "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
+
   return (
-    <div className="flex flex-col items-center justify-center bg-yellow-400 rounded-md shadow-lg border border-black/10 text-black font-semibold w-24 h-28">
-      {player.sprite ? (
-        <img
-          src={player.sprite}
-          alt={player.name}
-          className="w-16 h-16 rounded object-cover border-2 border-white"
-          loading="lazy"
-        />
-      ) : (
-        <div className="w-16 h-16 bg-white/30 rounded" />
-      )}
-      <div className="text-xs text-center mt-1 px-1 truncate">{player.name}</div>
+    <div
+      className={[
+        "relative w-28 sm:w-32",
+        "rounded-2xl",
+        "bg-white/10",
+        "backdrop-blur-md",
+        "border border-white/15",
+        "ring-1 ring-white/10",
+        "shadow-lg",
+        "hover:shadow-xl hover:bg-white/12 transition",
+      ].join(" ")}
+    >
+      {/* Badges superiores */}
+      <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-white/15 border border-white/20 text-white/90">
+        {player.position}
+      </div>
+      <div
+        className={[
+          "absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full",
+          badgeClass(player.element),
+        ].join(" ")}
+      >
+        {player.element || "—"}
+      </div>
+
+      {/* Imagen en recuadro más claro */}
+      <div className="p-2">
+        <div className="rounded-xl bg-white/20 border border-white/20 aspect-square flex items-center justify-center overflow-hidden">
+          {player.sprite ? (
+            <img
+              src={player.sprite}
+              alt={player.name}
+              className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-white/15" />
+          )}
+        </div>
+
+        {/* Nombre y valor */}
+        <div className="mt-2 text-center px-1">
+          <div className="text-sm font-semibold truncate">{player.name}</div>
+          {value && <div className="text-xs text-white/70 mt-0.5">{value}</div>}
+        </div>
+      </div>
     </div>
   );
 }
 
+/* ---------- Sortable wrapper ---------- */
 function SortablePlayer({ id, player }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
@@ -68,6 +105,9 @@ function SortablePlayer({ id, player }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
     cursor: "grab",
+    width: "100%",
+    minWidth: "100%",
+    boxSizing: "border-box",
   };
 
   return (
@@ -77,7 +117,7 @@ function SortablePlayer({ id, player }) {
   );
 }
 
-/* ---------- Contenedor droppable ---------- */
+/* ---------- Droppable list ---------- */
 function DroppableList({ id, itemsIds, children }) {
   const { setNodeRef } = useDroppable({ id });
   return (
@@ -89,7 +129,6 @@ function DroppableList({ id, itemsIds, children }) {
   );
 }
 
-/* ---------- Componente principal ---------- */
 export default function Team() {
   const { draftId } = useParams();
   const nav = useNavigate();
@@ -105,15 +144,18 @@ export default function Team() {
   const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
   const [loading, setLoading] = useState(true);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
         const data = await myTeam(draftId);
         const players = (data.players || []).map((p) => ({
           ...p,
-          element: p.element === "Air" ? "Wind" : p.element,
+          element: p.element === "Air" ? "Wind" : p.element, // normalize
           sprite: normalizeUrl(p.sprite),
           value: toNumber(p.value),
         }));
@@ -131,19 +173,36 @@ export default function Team() {
     load();
   }, [draftId]);
 
-  if (loading)
-    return (
-      <main className="p-5 bg-slate-950 min-h-screen text-white flex items-center justify-center">
-        Cargando equipo...
-      </main>
-    );
+  const totals = useMemo(() => {
+    const all = [...team.starters, ...team.bench, ...team.reserves];
+    const totalValue = all.reduce((a, p) => a + toNumber(p.value), 0);
+    const budgetNum = toNumber(team.budget);
+    const remaining = Math.max(budgetNum - totalValue, 0);
+    return {
+      totalValue,
+      budgetNum,
+      remaining,
+      byBlock: {
+        starters: team.starters.reduce((a, p) => a + toNumber(p.value), 0),
+        bench: team.bench.reduce((a, p) => a + toNumber(p.value), 0),
+        reserves: team.reserves.reduce((a, p) => a + toNumber(p.value), 0),
+      },
+    };
+  }, [team]);
 
+  /* ---------- DnD helpers (swap) ---------- */
   const findItem = (id) => {
     const prefix = id[0];
     const key = prefix === "s" ? "starters" : prefix === "b" ? "bench" : "reserves";
     const itemId = parseInt(id.split("-")[1]);
     const index = team[key].findIndex((p) => p.id === itemId);
     return { key, index, item: team[key][index] };
+  };
+
+  const collisionStrategy = (args) => {
+    const c = pointerWithin(args);
+    if (c.length > 0) return c;
+    return rectIntersection(args);
   };
 
   const handleDragStart = (e) => {
@@ -162,7 +221,7 @@ export default function Team() {
     const to = findItem(over.id);
 
     if (to.item) {
-      // Intercambio
+      // Swap
       setTeam((prev) => {
         const next = { ...prev };
         const fromList = [...next[from.key]];
@@ -175,57 +234,86 @@ export default function Team() {
         next[to.key] = toList;
         return next;
       });
+      return;
+    }
+
+    // Si suelta sobre contenedor vacío (poco probable en starters), mover al final
+    const containers = ["starters", "bench", "reserves"];
+    const container = containers.find((c) => c === over.id);
+    if (container) {
+      // límites solo si no es swap
+      const LIMITS = { starters: 11, bench: 5, reserves: Infinity };
+      if (team[container].length >= LIMITS[container]) return;
+      setTeam((prev) => {
+        const next = { ...prev };
+        const src = [...next[from.key]];
+        const [player] = src.splice(from.index, 1);
+        next[from.key] = src;
+        next[container] = [...next[container], player];
+        return next;
+      });
     }
   };
 
+  if (loading) {
+    return (
+      <main className="p-5 bg-slate-950 min-h-screen text-white flex items-center justify-center">
+        Cargando equipo…
+      </main>
+    );
+  }
+
+  /* ---------- Layout del campo (posiciones 4-4-2 por defecto) ---------- */
   const fieldPositions = [
-    { top: "5%", left: "45%" }, // portero
-    { top: "20%", left: "15%" },
-    { top: "20%", left: "35%" },
-    { top: "20%", left: "55%" },
-    { top: "20%", left: "75%" },
-    { top: "45%", left: "15%" },
-    { top: "45%", left: "35%" },
-    { top: "45%", left: "55%" },
-    { top: "45%", left: "75%" },
-    { top: "70%", left: "35%" },
-    { top: "70%", left: "55%" },
+    { top: "5%", left: "50%" }, // GK
+    { top: "22%", left: "15%" },
+    { top: "22%", left: "35%" },
+    { top: "22%", left: "65%" },
+    { top: "22%", left: "85%" },
+    { top: "45%", left: "22%" },
+    { top: "45%", left: "40%" },
+    { top: "45%", left: "60%" },
+    { top: "45%", left: "78%" },
+    { top: "70%", left: "40%" },
+    { top: "70%", left: "60%" },
   ];
 
   return (
     <main className="p-5 bg-slate-950 min-h-screen text-white">
-      <div className="text-center mb-4">
+      <div className="max-w-6xl mx-auto text-center mb-6">
         <button
           onClick={() => nav(-1)}
           className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
         >
           ← Volver
         </button>
-        <h1 className="text-3xl font-bold mt-3">{team.name}</h1>
+        <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
+        <p className="text-white/70 mt-1">
+          Presupuesto: {totals.budgetNum.toLocaleString()}€ · Valor:{" "}
+          {totals.totalValue.toLocaleString()}€ · Restante:{" "}
+          {totals.remaining.toLocaleString()}€
+        </p>
       </div>
 
       <DndContext
         sensors={sensors}
-        collisionDetection={pointerWithin}
+        collisionDetection={collisionStrategy}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         {/* CAMPO DE FÚTBOL */}
         <div
-          className="relative mx-auto rounded-xl overflow-hidden shadow-lg"
+          className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
             backgroundImage: "url('/campo_futbol.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
             width: "100%",
-            maxWidth: "600px",
-            height: "700px",
+            maxWidth: "780px",
+            height: "780px",
           }}
         >
-          <DroppableList
-            id="starters"
-            itemsIds={team.starters.map((p) => `s-${p.id}`)}
-          >
+          <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
             {team.starters.map((p, i) => (
               <div
                 key={`s-${p.id}`}
@@ -242,32 +330,43 @@ export default function Team() {
           </DroppableList>
         </div>
 
-        {/* BANQUILLO Y RESERVA */}
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
-          <section className="bg-white/5 rounded-xl p-4 shadow">
-            <h2 className="text-xl font-semibold mb-2">Banquillo</h2>
+        {/* BANQUILLO / RESERVA */}
+        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
+          <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
+            <header className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Banquillo</h2>
+              <span className="text-xs text-white/60">
+                {team.bench.length}/5 · Valor: {totals.byBlock.bench.toLocaleString()}€
+              </span>
+            </header>
             <DroppableList id="bench" itemsIds={team.bench.map((p) => `b-${p.id}`)}>
-              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {team.bench.map((p) => (
                   <SortablePlayer key={`b-${p.id}`} id={`b-${p.id}`} player={p} />
                 ))}
-              </ul>
+              </div>
             </DroppableList>
           </section>
 
-          <section className="bg-white/5 rounded-xl p-4 shadow">
-            <h2 className="text-xl font-semibold mb-2">Reserva</h2>
+          <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
+            <header className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Reserva</h2>
+              <span className="text-xs text-white/60">
+                {team.reserves.length} jugadores · Valor:{" "}
+                {totals.byBlock.reserves.toLocaleString()}€
+              </span>
+            </header>
             <DroppableList id="reserves" itemsIds={team.reserves.map((p) => `r-${p.id}`)}>
-              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {team.reserves.map((p) => (
                   <SortablePlayer key={`r-${p.id}`} id={`r-${p.id}`} player={p} />
                 ))}
-              </ul>
+              </div>
             </DroppableList>
           </section>
         </div>
 
-        {/* OVERLAY */}
+        {/* Overlay (ignoramos issue visual por ahora) */}
         <DragOverlay>
           {activeId ? (
             (() => {
