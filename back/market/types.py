@@ -9,6 +9,7 @@ class TransferOfferStatus(models.TextChoices):
 class TransferOfferSource(models.TextChoices):
     TEAM = 'team', 'Equipo'
     OFFER = 'offer', 'Oferta'
+    RELEASE_CLAUSE = 'release_clause', 'Cláusula'
 
 
 class TransferProcessStatus(models.TextChoices):

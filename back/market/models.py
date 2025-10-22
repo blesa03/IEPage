@@ -90,6 +90,8 @@ class Transfer(models.Model):
         max_digits=12, 
     )
     
+    release_clause_paid = models.BooleanField(default=False)
+    
     def __str__(self):
         return f'Traspaso del jugador {self.draft_player.name} de {self.from_team.name} a {self.to_team.name} por {self.transfer_amount}€'
     

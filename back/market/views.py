@@ -151,6 +151,10 @@ def accept_offer(request: HttpRequest, transfer_offer_id):
     target_team.budget += offer.offer
     draft_player.team = offering_team
     
+    if draft_player.release_clause:
+        target_team.clause_budget += draft_player.release_clause
+        draft_player.release_clause = None
+    
     offset = offer.offer - process.amount
     if offset:
         offering_team.budget -= offset
@@ -158,9 +162,10 @@ def accept_offer(request: HttpRequest, transfer_offer_id):
         process.amount += offset
         process.save(update_fields=['amount'])
     
+    
     offer.save(update_fields=['status', 'accepted_at'])
     target_team.save(update_fields=['budget'])
-    draft_player.save(update_fields=['team'])
+    draft_player.save(update_fields=['team', 'release_clause'])
     
     # Rechazar todas las demás ofertas pendientes de este proceso
     other_offers = TransferOffer.objects.filter(
@@ -367,11 +372,45 @@ def pay_player_release_clausule(request: HttpRequest):
     offering_team.budget -= draft_player.release_clause
     target_team.budget += draft_player.release_clause
     
+    if draft_player.release_clause:
+        target_team.clause_budget += draft_player.release_clause
+        draft_player.release_clause = None
+    
     draft_player.team = offering_team
     
     offering_team.save(update_fields=['budget'])
-    target_team.save(update_fields=['budget'])
-    draft_player.save(update_fields=['team'])
+    target_team.save(update_fields=['budget', 'clause_budget'])
+    draft_player.save(update_fields=['team', 'release_clause'])
+    
+    process = TransferProcess.objects.create(
+        draft_player=draft_player,
+        offering_team=offering_team,
+        target_team=target_team,
+        amount=draft_player.release_clause,
+        status=TransferProcessStatus.FINISHED,
+        finished_at=datetime.now(UTC)
+    )
+    
+    offer = TransferOffer.objects.create(
+        transfer_process=process,
+        draft_player=draft_player,
+        offering_team=offering_team,
+        target_team=target_team,
+        offer=draft_player.release_clause,
+        status=TransferOfferStatus.ACEPTED,
+        source=TransferOfferSource.RELEASE_CLAUSE,
+        accepted_at=datetime.now(UTC),
+    )
+    
+    Transfer.objects.create(
+        transfer_process=process,
+        draft_player=draft_player,
+        from_team=target_team,
+        to_team=offering_team,
+        accepted_offer=offer,
+        transfer_amount=draft_player.release_clause,
+        release_clause_paid=True,
+    )
     
     return HttpResponse(status=204)
     
