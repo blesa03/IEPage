@@ -40,7 +40,7 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Player Card (cristal + badges arriba, img pequeña) ---------- */
+/* ---------- Player Card (compacta + cristal) ---------- */
 function PlayerCard({ player }) {
   const value =
     "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
@@ -48,39 +48,43 @@ function PlayerCard({ player }) {
   return (
     <div
       className={[
-        "relative w-28 sm:w-32 rounded-2xl",
+        "relative w-24 sm:w-28 rounded-2xl",
         "bg-white/10 backdrop-blur-md",
         "border border-white/15 ring-1 ring-white/10",
         "shadow-lg hover:shadow-xl hover:bg-white/12 transition",
-        "px-2 pt-5 pb-3",
+        "px-2 pt-5 pb-2",
       ].join(" ")}
     >
-      {/* Badges en la parte superior de la card */}
+      {/* Badges superiores */}
       <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-white/90">
         {player.position}
       </div>
-      <div className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md ${badgeClass(player.element)}`}>
+      <div
+        className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md ${badgeClass(
+          player.element
+        )}`}
+      >
         {player.element || "—"}
       </div>
 
-      {/* Imagen */}
-      <div className="rounded-xl bg-white/20 border border-white/20 mx-auto w-[72px] h-[72px] sm:w-[80px] sm:h-[80px] flex items-center justify-center overflow-hidden">
+      {/* Imagen (más pequeña) */}
+      <div className="rounded-xl bg-white/20 border border-white/20 mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] flex items-center justify-center overflow-hidden">
         {player.sprite ? (
           <img
             src={player.sprite}
             alt={player.name}
-            className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] object-cover rounded-lg"
+            className="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] object-cover rounded-lg"
             loading="lazy"
           />
         ) : (
-          <div className="w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-lg bg-white/10" />
+          <div className="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] rounded-lg bg-white/10" />
         )}
       </div>
 
       {/* Nombre y valor */}
-      <div className="mt-2 text-center px-1">
-        <div className="text-sm font-semibold truncate">{player.name}</div>
-        {value && <div className="text-xs text-white/70 mt-0.5">{value}</div>}
+      <div className="mt-1 text-center px-1">
+        <div className="text-[13px] font-semibold truncate">{player.name}</div>
+        {value && <div className="text-[11px] text-white/70 mt-0.5">{value}</div>}
       </div>
     </div>
   );
@@ -117,20 +121,13 @@ function DroppableList({ id, itemsIds, children }) {
   );
 }
 
-/* ---------- Util: evitar solapes (trabaja en %) ---------- */
-/**
- * Recibe una lista de puntos {top,left} (en %) y devuelve
- * una versión "empujada" para que no se pisen entre sí.
- * minDeltaPct es el mínimo de separación tanto en X como Y.
- */
-function spreadPositions(points, minDeltaPct = 11, bounds = { min: 2, max: 98 }) {
+/* ---------- Util: evitar solapes (en %) ---------- */
+function spreadPositions(points, minDeltaPct = 12, bounds = { min: 1.5, max: 98.5 }) {
   const out = [];
   for (const p of points) {
     let x = p.left;
     let y = p.top;
     let tries = 0;
-
-    // desplazamiento alternando eje X e Y hasta separar
     while (tries < 80) {
       let ok = true;
       for (const q of out) {
@@ -138,12 +135,9 @@ function spreadPositions(points, minDeltaPct = 11, bounds = { min: 2, max: 98 })
         const tooCloseY = Math.abs(y - q.top) < minDeltaPct;
         if (tooCloseX && tooCloseY) {
           ok = false;
-          // desplazar en ajedrez: a la derecha y un poco arriba/abajo alternando
-          if (tries % 2 === 0) {
-            x += minDeltaPct * 0.6;
-          } else {
-            y += (tries % 4 === 1 ? 1 : -1) * minDeltaPct * 0.6;
-          }
+          // desplaza alternando ejes
+          if (tries % 2 === 0) x += minDeltaPct * 0.6;
+          else y += (tries % 4 === 1 ? 1 : -1) * minDeltaPct * 0.6;
           x = Math.max(bounds.min, Math.min(bounds.max, x));
           y = Math.max(bounds.min, Math.min(bounds.max, y));
           break;
@@ -156,6 +150,61 @@ function spreadPositions(points, minDeltaPct = 11, bounds = { min: 2, max: 98 })
   }
   return out;
 }
+
+/* ---------- Formaciones (GK abajo) ---------- */
+const FORMATIONS = {
+  "4-4-2": [
+    // 2 delanteros
+    { top: 9, left: 35 },
+    { top: 9, left: 65 },
+    // 4 medios
+    { top: 28, left: 18 },
+    { top: 28, left: 42 },
+    { top: 28, left: 58 },
+    { top: 28, left: 82 },
+    // 4 defensas
+    { top: 53, left: 16 },
+    { top: 53, left: 38 },
+    { top: 53, left: 62 },
+    { top: 53, left: 84 },
+    // portero
+    { top: 83, left: 50 },
+  ],
+  "4-3-3": [
+    // 3 delanteros
+    { top: 9, left: 20 },
+    { top: 9, left: 50 },
+    { top: 9, left: 80 },
+    // 3 medios
+    { top: 30, left: 30 },
+    { top: 30, left: 50 },
+    { top: 30, left: 70 },
+    // 4 defensas
+    { top: 55, left: 16 },
+    { top: 55, left: 38 },
+    { top: 55, left: 62 },
+    { top: 55, left: 84 },
+    // portero
+    { top: 83, left: 50 },
+  ],
+  "3-5-2": [
+    // 2 delanteros
+    { top: 9, left: 35 },
+    { top: 9, left: 65 },
+    // 5 medios
+    { top: 26, left: 12 },
+    { top: 26, left: 29 },
+    { top: 26, left: 50 },
+    { top: 26, left: 71 },
+    { top: 26, left: 88 },
+    // 3 defensas
+    { top: 56, left: 30 },
+    { top: 56, left: 50 },
+    { top: 56, left: 70 },
+    // portero
+    { top: 83, left: 50 },
+  ],
+};
 
 /* ---------- Componente principal ---------- */
 export default function Team() {
@@ -172,6 +221,7 @@ export default function Team() {
   const [activeId, setActiveId] = useState(null);
   const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
   const [loading, setLoading] = useState(true);
+  const [formation, setFormation] = useState("4-4-2"); // ✅ por defecto
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -184,7 +234,7 @@ export default function Team() {
         const data = await myTeam(draftId);
         const players = (data.players || []).map((p) => ({
           ...p,
-          element: p.element === "Air" ? "Wind" : p.element, // normaliza Air → Wind
+          element: p.element === "Air" ? "Wind" : p.element,
           sprite: normalizeUrl(p.sprite),
           value: toNumber(p.value),
         }));
@@ -206,11 +256,9 @@ export default function Team() {
     const all = [...team.starters, ...team.bench, ...team.reserves];
     const totalValue = all.reduce((a, p) => a + toNumber(p.value), 0);
     const budgetNum = toNumber(team.budget);
-    const remaining = Math.max(budgetNum - totalValue, 0);
     return {
       totalValue,
       budgetNum,
-      remaining,
       byBlock: {
         starters: team.starters.reduce((a, p) => a + toNumber(p.value), 0),
         bench: team.bench.reduce((a, p) => a + toNumber(p.value), 0),
@@ -291,46 +339,45 @@ export default function Team() {
     );
   }
 
-  /* ---------- Layout del campo (invertido: GK abajo) ---------- */
-  // Zona segura reducida a pocos píxeles:
-  const SAFE_INSET_PX = 8; // cambia a 5 o 10 si quieres
-  // Coordenadas base (en %) 4-4-2 invertido
-  const basePositions = [
-    // Delanteros
-    { top: 8, left: 35 },
-    { top: 8, left: 65 },
-    // Segunda línea
-    { top: 25, left: 20 },
-    { top: 25, left: 50 },
-    { top: 25, left: 80 },
-    // Mediocampo
-    { top: 45, left: 30 },
-    { top: 45, left: 70 },
-    // Defensa
-    { top: 65, left: 15 },
-    { top: 65, left: 50 },
-    { top: 65, left: 85 },
-    // Portero
-    { top: 88, left: 50 },
-  ];
-
-  // Ajuste anti-solape (trabaja en % y respeta un borde min/max)
-  const fieldPositions = spreadPositions(basePositions, 11, { min: 2, max: 98 });
+  /* ---------- Campo ---------- */
+  const SAFE_INSET_PX = 8;
+  const MIN_SEPARATION_PCT = 12;
+  const base = FORMATIONS[formation] || FORMATIONS["4-4-2"];
+  const fieldPositions = spreadPositions(base, MIN_SEPARATION_PCT, {
+    min: 1.5,
+    max: 98.5,
+  });
 
   return (
     <main className="p-5 bg-slate-950 min-h-screen text-white">
       <div className="max-w-6xl mx-auto text-center mb-6">
-        <button
-          onClick={() => nav(-1)}
-          className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
-        >
-          ← Volver
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => nav(-1)}
+            className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
+          >
+            ← Volver
+          </button>
+
+          {/* Selector de formación (fuente negra) */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-white/70 hidden sm:inline">Formación:</label>
+            <select
+              className="bg-white text-black border border-slate-300 rounded-md px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+              value={formation}
+              onChange={(e) => setFormation(e.target.value)}
+            >
+              <option>4-4-2</option>
+              <option>4-3-3</option>
+              <option>3-5-2</option>
+            </select>
+          </div>
+        </div>
+
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
         <p className="text-white/70 mt-1">
           Presupuesto: {totals.budgetNum.toLocaleString()}€ · Valor:{" "}
-          {totals.totalValue.toLocaleString()}€ · Restante:{" "}
-          {totals.remaining.toLocaleString()}€
+          {totals.totalValue.toLocaleString()}€
         </p>
       </div>
 
@@ -340,7 +387,7 @@ export default function Team() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* CAMPO con zona segura mínima y fondo por URL */}
+        {/* Campo con zona segura mínima y fondo por URL */}
         <div
           className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
@@ -353,7 +400,6 @@ export default function Team() {
             height: "780px",
           }}
         >
-          {/* Zona segura: solo unos píxeles */}
           <div className="absolute" style={{ inset: `${SAFE_INSET_PX}px` }}>
             <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
               {team.starters.map((p, i) => {
