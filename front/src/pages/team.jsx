@@ -303,7 +303,7 @@ export default function Team() {
         <div
           className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
-            backgroundImage: "url('/campo_futbol.jpg')",
+            backgroundImage: "url('https://i.pinimg.com/564x/02/f0/a0/02f0a04d141f9159906da402d942ec83.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
             width: "100%",
