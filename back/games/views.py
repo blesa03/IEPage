@@ -150,6 +150,7 @@ def add_match_result_request(request: HttpRequest, game_id):
     )
     
     return JsonResponse({'message': 'Solicitud enviada correctamente'})
+
 def get_match_result_requests(request: HttpRequest, game_id):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
