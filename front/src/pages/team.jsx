@@ -4,22 +4,23 @@ import { myTeam } from "../api/team";
 
 import {
   DndContext,
-  closestCenter,
   DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
   useDroppable,
+  pointerWithin,
+  rectIntersection,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   rectSortingStrategy,
   useSortable,
-  arrayMove,
+  arrayMove, // ya no la usamos para swap, pero la dejo por si quieres reordenación clásica
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-/* ---------- Utilidades de estilo/normalización ---------- */
+/* ---------- Utilidades ---------- */
 
 const ELEMENT_STYLES = {
   Fire: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
@@ -41,11 +42,11 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Fila de jugador ---------- */
+/* ---------- UI de fila ---------- */
 
 function PlayerRow({ player }) {
   return (
-    <div className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
+    <div className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2 w-full">
       <div className="flex items-center gap-3 min-w-0">
         {player.sprite ? (
           <img
@@ -85,9 +86,11 @@ function SortablePlayer({ id, player }) {
     transition,
     opacity: isDragging ? 0.4 : 1,
     cursor: "grab",
-    width: "100%", // evita encogimientos del li sortable
+    width: "100%",
+    boxSizing: "border-box",
   };
 
+  // Importante: el ref va sobre un contenedor con w-full para que el ancho no cambie
   return (
     <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <PlayerRow player={player} />
@@ -98,13 +101,11 @@ function SortablePlayer({ id, player }) {
 /* ---------- Contenedor droppable ---------- */
 
 function DroppableList({ id, itemsIds, children }) {
-  // Registra el contenedor como droppable para poder soltar aunque no haya ítems
   const { setNodeRef, isOver } = useDroppable({ id });
-
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[56px] rounded-lg border p-2 ${
+      className={`min-h-[56px] rounded-lg border p-2 transition ${
         isOver ? "border-white/30 bg-white/5" : "border-white/10"
       }`}
     >
@@ -154,7 +155,7 @@ export default function Team() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
   const [activeId, setActiveId] = useState(null);
-  const [overlayStyle, setOverlayStyle] = useState({ width: 0 }); // ancho fijo del overlay
+  const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
 
   const allMaps = useMemo(() => {
     const startersIds = team.starters.map((p) => `s-${p.id}`);
@@ -195,7 +196,6 @@ export default function Team() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId]);
 
   const totals = useMemo(() => {
@@ -216,7 +216,12 @@ export default function Team() {
     };
   }, [team]);
 
-  /* ---------- Helpers DnD ---------- */
+  /* ---------- Helpers DnD & lógica de swap ---------- */
+
+  const containerIds = ["starters", "bench", "reserves"];
+
+  const isContainerId = (id) => containerIds.includes(id);
+  const isItemId = (id) => typeof id === "string" && id.includes("-");
 
   const findLocationByItemId = (itemId) => {
     if (!itemId) return null;
@@ -231,28 +236,22 @@ export default function Team() {
 
   const getOverContainer = (overId) => {
     if (!overId) return null;
-    // Si es un contenedor droppable, vendrá tal cual:
-    if (overId === "starters" || overId === "bench" || overId === "reserves") return overId;
-    // Si es un ítem, derivamos el contenedor a partir del prefijo
+    if (isContainerId(overId)) return overId;
     const loc = findLocationByItemId(overId);
     return loc ? loc.container : null;
   };
 
   const removeFrom = (arr, idx) => arr.slice(0, idx).concat(arr.slice(idx + 1));
   const insertAt = (arr, idx, item) => {
-    // Normaliza índices inválidos
     const i = idx < 0 || idx > arr.length ? arr.length : idx;
     return [...arr.slice(0, i), item, ...arr.slice(i)];
   };
 
-  const getIndexInContainer = (containerKey, overId) => {
-    // Si el drop es sobre el contenedor vacío/zona libre: final
-    if (!overId || overId === containerKey) return team[containerKey].length;
-    // Si el drop es sobre un ítem, usamos su índice en ese contenedor
-    const loc = findLocationByItemId(overId);
-    if (!loc || loc.container !== containerKey) return team[containerKey].length;
-    // Si no encuentra indice válido, al final:
-    return loc.index < 0 ? team[containerKey].length : loc.index;
+  // Colisión: primero busca contenedores bajo el puntero; si no, ítems
+  const collisionStrategy = (args) => {
+    const containerHits = pointerWithin(args).filter((c) => isContainerId(c.id));
+    if (containerHits.length) return containerHits;
+    return rectIntersection(args);
   };
 
   /* ---------- Handlers DnD ---------- */
@@ -260,13 +259,10 @@ export default function Team() {
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
 
-    // Medir ancho real del elemento drag source para fijarlo en el overlay
-    // dnd-kit expone rects en event.active.rect.current
+    // Congela ancho del overlay
     const r =
       event.active?.rect?.current?.translated || event.active?.rect?.current?.initial;
-    if (r && r.width) {
-      setOverlayStyle({ width: `${Math.round(r.width)}px` });
-    }
+    if (r && r.width) setOverlayStyle({ width: `${Math.round(r.width)}px` });
   };
 
   const handleDragEnd = (event) => {
@@ -277,41 +273,55 @@ export default function Team() {
     if (!over) return;
 
     const fromLoc = findLocationByItemId(active.id);
-    const toContainer = getOverContainer(over.id);
+    const overId = over.id;
+    const toContainer = getOverContainer(overId);
+
     if (!fromLoc || !toContainer) return;
 
     const fromKey = fromLoc.container;
-    const toKey = toContainer;
 
-    // Reordenación dentro de la misma lista
-    if (fromKey === toKey) {
-      const fromIndex = fromLoc.index;
-      const toIndex = getIndexInContainer(toKey, over.id);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+    // 1) Si suelto SOBRE UN ITEM -> SWAP con ese item (aunque el destino esté lleno)
+    if (isItemId(overId)) {
+      const toLoc = findLocationByItemId(overId);
+      if (!toLoc) return;
 
-      setTeam((prev) => ({
-        ...prev,
-        [toKey]: arrayMove(prev[toKey], fromIndex, toIndex),
-      }));
+      const toKey = toLoc.container;
+
+      setTeam((prev) => {
+        const next = { ...prev };
+        const fromList = [...next[fromKey]];
+        const toList = fromKey === toKey ? fromList : [...next[toKey]];
+
+        const a = fromList[fromLoc.index];
+        const b = toList[toLoc.index];
+
+        // Intercambio
+        fromList[fromLoc.index] = b;
+        toList[toLoc.index] = a;
+
+        next[fromKey] = fromList;
+        next[toKey] = toList;
+        return next;
+      });
       return;
     }
 
-    // Movimiento entre listas (con límites)
-    if (team[toKey].length >= LIMITS[toKey]) {
-      return; // destino lleno -> no mover
-    }
+    // 2) Si suelto SOBRE EL CONTENEDOR (área vacía) -> mover al final si hay hueco
+    const toKey = toContainer;
+    if (fromKey === toKey) return; // nada que hacer
+
+    // Respetar límites solo en movimiento "puro" (no swap)
+    if (team[toKey].length >= LIMITS[toKey]) return;
 
     const movingPlayer = team[fromKey][fromLoc.index];
-    const insertIndex = getIndexInContainer(toKey, over.id);
-
     setTeam((prev) => {
       const fromArr = removeFrom(prev[fromKey], fromLoc.index);
-      const toArr = insertAt(prev[toKey], insertIndex, movingPlayer);
+      const toArr = insertAt(prev[toKey], prev[toKey].length, movingPlayer);
       return { ...prev, [fromKey]: fromArr, [toKey]: toArr };
     });
   };
 
-  /* ---------- Loading / Error ---------- */
+  /* ---------- Loading UI ---------- */
 
   if (loading) {
     return (
@@ -388,10 +398,10 @@ export default function Team() {
         )}
       </div>
 
-      {/* Drag & Drop */}
+      {/* DnD con colisiones personalizadas */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={collisionStrategy}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
@@ -461,7 +471,7 @@ export default function Team() {
           </section>
         </div>
 
-        {/* Overlay del ítem arrastrado con ANCHO FIJO */}
+        {/* Overlay con ancho fijado */}
         <DragOverlay>
           {activeId ? (
             (() => {
@@ -485,4 +495,13 @@ export default function Team() {
       </DndContext>
     </main>
   );
+}
+
+/* ---------- Estrategia de colisiones ---------- */
+// Prioriza contenedores bajo el puntero; si no hay, usa intersección de rectángulos.
+function collisionStrategy(args) {
+  const isContainer = (id) => ["starters", "bench", "reserves"].includes(id);
+  const containers = pointerWithin(args).filter((c) => isContainer(c.id));
+  if (containers.length) return containers;
+  return rectIntersection(args);
 }
