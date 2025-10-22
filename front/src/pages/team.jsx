@@ -55,7 +55,7 @@ function PlayerCard({ player }) {
         "px-2 pt-5 pb-3",
       ].join(" ")}
     >
-      {/* Badges superiores (mismo nivel que nombre/valor, no encima de la imagen) */}
+      {/* Badges en la parte superior de la card */}
       <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-white/90">
         {player.position}
       </div>
@@ -96,9 +96,6 @@ function SortablePlayer({ id, player }) {
     transition,
     opacity: isDragging ? 0.5 : 1,
     cursor: "grab",
-    width: "100%",
-    minWidth: "100%",
-    boxSizing: "border-box",
   };
 
   return (
@@ -120,62 +117,47 @@ function DroppableList({ id, itemsIds, children }) {
   );
 }
 
-/* ---------- Formaciones: coordenadas sin solapes ---------- */
-/* Todas con GK abajo. Usamos top/left (%) dentro de una "zona segura" (inset). */
-const FORMATIONS = {
-  "4-4-2": [
-    // 2 delanteros (arriba)
-    { top: 10, left: 35 },
-    { top: 10, left: 65 },
-    // 4 medios
-    { top: 30, left: 20 },
-    { top: 30, left: 45 },
-    { top: 30, left: 55 },
-    { top: 30, left: 80 },
-    // 4 defensas
-    { top: 55, left: 15 },
-    { top: 55, left: 37 },
-    { top: 55, left: 63 },
-    { top: 55, left: 85 },
-    // portero
-    { top: 85, left: 50 },
-  ],
-  "4-3-3": [
-    // 3 delanteros
-    { top: 10, left: 22 },
-    { top: 10, left: 50 },
-    { top: 10, left: 78 },
-    // 3 medios
-    { top: 32, left: 30 },
-    { top: 32, left: 50 },
-    { top: 32, left: 70 },
-    // 4 defensas
-    { top: 56, left: 15 },
-    { top: 56, left: 37 },
-    { top: 56, left: 63 },
-    { top: 56, left: 85 },
-    // portero
-    { top: 85, left: 50 },
-  ],
-  "3-5-2": [
-    // 2 delanteros
-    { top: 10, left: 35 },
-    { top: 10, left: 65 },
-    // 5 medios (amplios para evitar solapes)
-    { top: 28, left: 14 },
-    { top: 28, left: 32 },
-    { top: 28, left: 50 },
-    { top: 28, left: 68 },
-    { top: 28, left: 86 },
-    // 3 defensas
-    { top: 56, left: 30 },
-    { top: 56, left: 50 },
-    { top: 56, left: 70 },
-    // portero
-    { top: 85, left: 50 },
-  ],
-};
+/* ---------- Util: evitar solapes (trabaja en %) ---------- */
+/**
+ * Recibe una lista de puntos {top,left} (en %) y devuelve
+ * una versión "empujada" para que no se pisen entre sí.
+ * minDeltaPct es el mínimo de separación tanto en X como Y.
+ */
+function spreadPositions(points, minDeltaPct = 11, bounds = { min: 2, max: 98 }) {
+  const out = [];
+  for (const p of points) {
+    let x = p.left;
+    let y = p.top;
+    let tries = 0;
 
+    // desplazamiento alternando eje X e Y hasta separar
+    while (tries < 80) {
+      let ok = true;
+      for (const q of out) {
+        const tooCloseX = Math.abs(x - q.left) < minDeltaPct;
+        const tooCloseY = Math.abs(y - q.top) < minDeltaPct;
+        if (tooCloseX && tooCloseY) {
+          ok = false;
+          // desplazar en ajedrez: a la derecha y un poco arriba/abajo alternando
+          if (tries % 2 === 0) {
+            x += minDeltaPct * 0.6;
+          } else {
+            y += (tries % 4 === 1 ? 1 : -1) * minDeltaPct * 0.6;
+          }
+          x = Math.max(bounds.min, Math.min(bounds.max, x));
+          y = Math.max(bounds.min, Math.min(bounds.max, y));
+          break;
+        }
+      }
+      if (ok) break;
+      tries++;
+    }
+    out.push({ top: y, left: x });
+  }
+  return out;
+}
+
+/* ---------- Componente principal ---------- */
 export default function Team() {
   const { draftId } = useParams();
   const nav = useNavigate();
@@ -190,7 +172,6 @@ export default function Team() {
   const [activeId, setActiveId] = useState(null);
   const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
   const [loading, setLoading] = useState(true);
-  const [formation, setFormation] = useState("4-4-2"); // ✅ por defecto
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -310,35 +291,41 @@ export default function Team() {
     );
   }
 
-  // Coordenadas actuales según formación seleccionada
-  const coords = FORMATIONS[formation] || FORMATIONS["4-4-2"];
+  /* ---------- Layout del campo (invertido: GK abajo) ---------- */
+  // Zona segura reducida a pocos píxeles:
+  const SAFE_INSET_PX = 8; // cambia a 5 o 10 si quieres
+  // Coordenadas base (en %) 4-4-2 invertido
+  const basePositions = [
+    // Delanteros
+    { top: 8, left: 35 },
+    { top: 8, left: 65 },
+    // Segunda línea
+    { top: 25, left: 20 },
+    { top: 25, left: 50 },
+    { top: 25, left: 80 },
+    // Mediocampo
+    { top: 45, left: 30 },
+    { top: 45, left: 70 },
+    // Defensa
+    { top: 65, left: 15 },
+    { top: 65, left: 50 },
+    { top: 65, left: 85 },
+    // Portero
+    { top: 88, left: 50 },
+  ];
+
+  // Ajuste anti-solape (trabaja en % y respeta un borde min/max)
+  const fieldPositions = spreadPositions(basePositions, 11, { min: 2, max: 98 });
 
   return (
     <main className="p-5 bg-slate-950 min-h-screen text-white">
       <div className="max-w-6xl mx-auto text-center mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={() => nav(-1)}
-            className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
-          >
-            ← Volver
-          </button>
-
-          {/* Selector de formación */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-white/70 hidden sm:inline">Formación:</label>
-            <select
-              className="bg-white/10 border border-white/15 rounded-md px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-white/20"
-              value={formation}
-              onChange={(e) => setFormation(e.target.value)}
-            >
-              <option>4-4-2</option>
-              <option>4-3-3</option>
-              <option>3-5-2</option>
-            </select>
-          </div>
-        </div>
-
+        <button
+          onClick={() => nav(-1)}
+          className="rounded-lg px-4 py-2 bg-white/10 border border-white/10 hover:bg-white/15 transition"
+        >
+          ← Volver
+        </button>
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
         <p className="text-white/70 mt-1">
           Presupuesto: {totals.budgetNum.toLocaleString()}€ · Valor:{" "}
@@ -353,11 +340,12 @@ export default function Team() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Campo con zona segura para evitar recortes */}
+        {/* CAMPO con zona segura mínima y fondo por URL */}
         <div
           className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
-            backgroundImage: "url('https://i.pinimg.com/564x/02/f0/a0/02f0a04d141f9159906da402d942ec83.jpg')",
+            backgroundImage:
+              "url('https://i.pinimg.com/564x/02/f0/a0/02f0a04d141f9159906da402d942ec83.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
             width: "100%",
@@ -365,10 +353,11 @@ export default function Team() {
             height: "780px",
           }}
         >
-          <div className="absolute" style={{ inset: "6%" }}>
+          {/* Zona segura: solo unos píxeles */}
+          <div className="absolute" style={{ inset: `${SAFE_INSET_PX}px` }}>
             <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
               {team.starters.map((p, i) => {
-                const pos = coords[i] || { top: 50, left: 50 };
+                const pos = fieldPositions[i] || { top: 50, left: 50 };
                 return (
                   <div
                     key={`s-${p.id}`}
@@ -387,7 +376,7 @@ export default function Team() {
           </div>
         </div>
 
-        {/* Banquillo / Reserva */}
+        {/* BANQUILLO / RESERVA */}
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
           <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
             <header className="flex items-center justify-between mb-3">
@@ -423,7 +412,7 @@ export default function Team() {
           </section>
         </div>
 
-        {/* Overlay (dejamos issue pendiente si aparece) */}
+        {/* Overlay */}
         <DragOverlay>
           {activeId ? (
             (() => {
