@@ -332,4 +332,46 @@ def counter_offer(request: HttpRequest, transfer_offer_id):
     )
     
     return HttpResponse(status=201)
+
+@transaction.atomic
+def pay_player_release_clausule(request: HttpRequest):
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads((request.body or b"{}").decode("utf-8")) or {}
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    
+    draft_player_id = data.get('draft_player_id')
+    
+    if not draft_player_id:
+        return JsonResponse({'error': 'Faltan parámetros'}, status=400)
+    
+    # Bloqueamos el jugador (para evitar múltiples negociaciones simultáneas)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player.id)
+    
+    try:
+        draft_user = DraftUser.objects.get(user_id=request.user.id, draft=draft_player.draft)
+    except DraftUser.DoesNotExist:
+        return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
+    
+    offering_team = Team.objects.select_for_update().get(draft=draft_player.draft, draft_user=draft_user)
+    
+    if offering_team.budget < draft_player.release_clause:
+        return JsonResponse({'error': 'No tienes suficiente dinero para pagar la cláusula'}, status=409)
+    
+    
+    target_team = Team.objects.select_for_update().get(id=draft_player.team.id)
+    
+    offering_team.budget -= draft_player.release_clause
+    target_team.budget += draft_player.release_clause
+    
+    draft_player.team = offering_team
+    
+    offering_team.save(update_fields=['budget'])
+    target_team.save(update_fields=['budget'])
+    draft_player.save(update_fields=['team'])
+    
+    return HttpResponse(status=204)
     
