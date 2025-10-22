@@ -187,6 +187,21 @@ class MarketViewsTests(TestCase):
     # accept_offer
     # -------------------------------------------------------------------------
     def test_accept_offer_ok(self):
+        # -------- Otras ofertas que deberia de estar canceladas -----------
+        other_process = TransferProcess.objects.create(
+            draft_player=self.draft_player,
+            offering_team=self.team1,
+            target_team=self.team2,
+            amount=Decimal("1.00")
+        )
+        other_offer = TransferOffer.objects.create(
+            transfer_process=other_process,
+            offering_team=self.team1,
+            target_team=self.team2,
+            offer=Decimal("1.00"),
+            draft_player=self.draft_player
+        )
+        
         url = reverse("accept_offer", args=[self.transfer_offer.id])
         self.transfer_offer.status = TransferOfferStatus.PENDING
         self.transfer_offer.save()
@@ -194,6 +209,12 @@ class MarketViewsTests(TestCase):
         self.assertIn(response.status_code, [200, 204])
         self.transfer_offer.refresh_from_db()
         self.assertEqual(self.transfer_offer.status, TransferOfferStatus.ACEPTED)
+        
+        other_process.refresh_from_db()
+        other_offer.refresh_from_db()
+        
+        self.assertTrue(other_process.status == TransferProcessStatus.FINISHED)
+        self.assertTrue(other_offer.status == TransferOfferStatus.REJECTED)
 
     def test_accept_offer_not_found(self):
         url = reverse("accept_offer", args=[9999])

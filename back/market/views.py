@@ -12,6 +12,8 @@ from market.types import TransferOfferStatus, TransferProcessStatus, TransferOff
 from datetime import datetime, UTC
 from django.forms.models import model_to_dict
 from django.http import HttpResponse
+from django.db.models import F
+from django.db import transaction
 
 
 def view_player_offers(request: HttpRequest, draft_player_id):
@@ -34,6 +36,7 @@ def view_offer(request: HttpRequest, transfer_offer_id):
     
     return JsonResponse(model_to_dict(offer), safe=False)
 
+@transaction.atomic
 def send_offer(request: HttpRequest):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -49,9 +52,8 @@ def send_offer(request: HttpRequest):
     if not offer or not draft_player_id:
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
     
-    
     try:
-        draft_player = DraftPlayer.objects.get(id=draft_player_id)
+        draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player_id)
     except DraftPlayer.DoesNotExist:
         return JsonResponse({'error': 'Jugador no encontrado'}, status=404)
     
@@ -60,32 +62,32 @@ def send_offer(request: HttpRequest):
     except DraftUser.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
-    # Obtenemos el equipo que hace la oferta
     try:
-        offering_team = Team.objects.get(draft_user=draft_user)
+        offering_team = Team.objects.select_for_update().get(draft_user=draft_user)
     except Team.DoesNotExist:
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
     if draft_player.team == offering_team:
         return JsonResponse({'error': 'No puedes hacer una oferta por tu propio jugador'}, status=409)
     
-    # Si existe alguna negociación por ese jugador con los mismos implciados abierta devolvemos error
-    if TransferProcess.objects.filter(offering_team=offering_team, draft_player=draft_player, status=TransferProcessStatus.OPEN).exists():
+    if TransferProcess.objects.filter(
+        offering_team=offering_team,
+        draft_player=draft_player,
+        status=TransferProcessStatus.OPEN
+    ).exists():
         return JsonResponse({'error': 'Ya tienes negociaciones abiertas por este jugador'}, status=409)
     
-    # La oferta no puede ser menor que el valor del jugador
     if offer < draft_player.player.value:
         return JsonResponse({'error': 'La oferta debe de ser igual o mayor que el valor del jugador'}, status=409)
     
-    # La oferta no puede ser mayor que el presupuesto del equipo que hace la oferta
     if offer > offering_team.budget:
         return JsonResponse({'error': 'No tienes presupuesto suficiente para ofrecer esa cantidad'}, status=409)
     
     # Retenemos el dinero de la oferta
-    offering_team.budget -= offer
-    
+    offering_team.budget = F('budget') - offer
     offering_team.save(update_fields=['budget'])
     
+    # Creamos la negociación y la oferta inicial
     process = TransferProcess.objects.create(
         offering_team=offering_team,
         target_team=draft_player.team,
@@ -104,92 +106,141 @@ def send_offer(request: HttpRequest):
     return HttpResponse(status=201)
 
 
+@transaction.atomic
 def accept_offer(request: HttpRequest, transfer_offer_id):
     if request.method != 'PATCH':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
-        offer = TransferOffer.objects.get(id=transfer_offer_id)
+        # Bloqueamos la oferta y el proceso asociado
+        offer = (
+            TransferOffer.objects
+            .select_for_update()
+            .select_related(
+                'transfer_process__offering_team',
+                'transfer_process__target_team',
+                'transfer_process__draft_player'
+            )
+            .get(id=transfer_offer_id)
+        )
     except TransferOffer.DoesNotExist:
-        return JsonResponse({'error': 'Oferta no encontrado'}, status=404)
+        return JsonResponse({'error': 'Oferta no encontrada'}, status=404)
     
+    process = offer.transfer_process
+    offering_team = process.offering_team
+    target_team = process.target_team
+    draft_player = process.draft_player
+
+    # Bloqueamos entidades críticas
+    offering_team = Team.objects.select_for_update().get(id=offering_team.id)
+    target_team = Team.objects.select_for_update().get(id=target_team.id)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player.id)
+
+    # Validaciones
     if offer.status != TransferOfferStatus.PENDING:
         return JsonResponse({'error': 'Esta oferta ya no se puede aceptar'}, status=409)
     
-    if offer.transfer_process.offering_team.budget < offer.offer:
+    if offering_team.budget < offer.offer:
         return JsonResponse({'error': 'El equipo que intenta fichar no tiene presupuesto suficiente'}, status=409)
     
-    # Cambiamos el estaod de la oferta y su fecha de aceptación
+    # Marcar la oferta como aceptada
     offer.status = TransferOfferStatus.ACEPTED
     offer.accepted_at = datetime.now(UTC)
-    # Sumamos el presupuesto al equipo que vende y cambiamos al jugador de equipo
-    offer.transfer_process.target_team.budget += offer.offer
-    offer.transfer_process.draft_player.team = offer.offering_team
     
-    # Calculamos el offset
-    offset = offer.offer - offer.transfer_process.amount
+    # Actualizar presupuestos y traspaso
+    target_team.budget += offer.offer
+    draft_player.team = offering_team
     
-    # Si hay offset significa que la oferta es distinta a la última que propuso el offering_team y hay que cambiar su presupuesto
+    offset = offer.offer - process.amount
     if offset:
-        offer.transfer_process.offering_team.budget -= offset
-        offer.transfer_process.offering_team.save(update_fields=['budget'])
+        offering_team.budget -= offset
+        offering_team.save(update_fields=['budget'])
+        process.amount += offset
+        process.save(update_fields=['amount'])
+    
+    offer.save(update_fields=['status', 'accepted_at'])
+    target_team.save(update_fields=['budget'])
+    draft_player.save(update_fields=['team'])
+    
+    # Rechazar todas las demás ofertas pendientes de este proceso
+    other_offers = TransferOffer.objects.filter(
+        draft_player=offer.draft_player,
+        status=TransferOfferStatus.PENDING
+    ).exclude(id=offer.id)
+    
+    now = datetime.now(UTC)
+    
+    for offer in other_offers:
+        offer.transfer_process.status = TransferProcessStatus.FINISHED
+        offer.transfer_process.finished_at = now
         
-        # Cambiamos también la cantidad final de la negociación
-        offer.transfer_process.amount += offset
-        offer.transfer_process.save(update_fields=['amount'])
+        offer.transfer_process.save(update_fields=['status', 'finished_at'])
     
-    offer.save(update_fields=['status'])
-    offer.transfer_process.target_team.save(update_fields=['budget'])
-    offer.transfer_process.draft_player.save(update_fields=['team'])
+    other_offers.update(status=TransferOfferStatus.REJECTED, rejected_at=now)
     
-    # Cambiamos el estado y la fecha de finalización de las negociaciones
-    offer.transfer_process.status = TransferProcessStatus.FINISHED
-    offer.transfer_process.finished_at = datetime.now(UTC)
+    # Cerrar el proceso de traspaso
+    process.status = TransferProcessStatus.FINISHED
+    process.finished_at = now
+    process.save(update_fields=['status', 'finished_at'])
     
-    offer.transfer_process.save(update_fields=['status', 'finished_at'])
-    
-    # Guardamos registro del traspaso
+    # Registrar el traspaso final
     Transfer.objects.create(
-        draft_player=offer.transfer_process.draft_player,
-        from_team=offer.target_team,
-        to_team=offer.offering_team,
+        draft_player=draft_player,
+        from_team=target_team,
+        to_team=offering_team,
         accepted_offer=offer,
         transfer_amount=offer.offer,
-        transfer_process=offer.transfer_process
+        transfer_process=process
     )
     
     return HttpResponse(status=204)
 
 
+@transaction.atomic
 def reject_offer(request: HttpRequest, transfer_offer_id):
     if request.method != 'PATCH':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
-        offer = TransferOffer.objects.get(id=transfer_offer_id)
+        # Bloqueamos la oferta y su proceso asociado
+        offer = (
+            TransferOffer.objects
+            .select_for_update()
+            .select_related('transfer_process__offering_team')
+            .get(id=transfer_offer_id)
+        )
     except TransferOffer.DoesNotExist:
-        return JsonResponse({'error': 'Oferta no encontrado'}, status=404)
+        return JsonResponse({'error': 'Oferta no encontrada'}, status=404)
+    
+    process = offer.transfer_process
+    offering_team = process.offering_team
+    
+    # Bloqueamos el equipo para evitar cambios concurrentes en su presupuesto
+    offering_team = Team.objects.select_for_update().get(id=offering_team.id)
     
     if offer.status != TransferOfferStatus.PENDING:
         return JsonResponse({'error': 'Esta oferta ya no se puede rechazar'}, status=409)
     
-    # Cambiamos el estaod de la oferta y su fecha de aceptación
+    # Actualizamos el estado de la oferta
     offer.status = TransferOfferStatus.REJECTED
     offer.rejected_at = datetime.now(UTC)
-    # Devolvemos el dinero ofrecido al equipo que lo ofreció
-    offer.transfer_process.offering_team.budget += offer.transfer_process.amount
     
-    offer.save(update_fields=['status'])
-    offer.transfer_process.offering_team.save(update_fields=['budget'])
+    # Devolvemos el dinero retenido al equipo oferente
+    offering_team.budget += process.amount
     
-    offer.transfer_process.status = TransferProcessStatus.FINISHED
-    offer.transfer_process.finished_at = datetime.now(UTC)
+    # Guardamos todos los cambios dentro de la misma transacción
+    offer.save(update_fields=['status', 'rejected_at'])
+    offering_team.save(update_fields=['budget'])
     
-    offer.transfer_process.save(update_fields=['status', 'finished_at'])
+    # Cerramos el proceso de negociación
+    process.status = TransferProcessStatus.FINISHED
+    process.finished_at = datetime.now(UTC)
+    process.save(update_fields=['status', 'finished_at'])
     
     return HttpResponse(status=204)
 
 
+@transaction.atomic
 def counter_offer(request: HttpRequest, transfer_offer_id):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -204,70 +255,80 @@ def counter_offer(request: HttpRequest, transfer_offer_id):
         return JsonResponse({'error': 'Faltan parámetros'}, status=400)
     
     try:
-        offer = TransferOffer.objects.get(id=transfer_offer_id)
+        # Bloqueamos la oferta original y su proceso
+        offer = (
+            TransferOffer.objects
+            .select_for_update()
+            .select_related('transfer_process__offering_team', 'transfer_process__draft_player')
+            .get(id=transfer_offer_id)
+        )
     except TransferOffer.DoesNotExist:
-        return JsonResponse({'error': 'Oferta no encontrado'}, status=404)
+        return JsonResponse({'error': 'Oferta no encontrada'}, status=404)
+    
+    process = offer.transfer_process
+    draft_player = process.draft_player
+    
+    # Bloqueamos el jugador (para evitar múltiples negociaciones simultáneas)
+    draft_player = DraftPlayer.objects.select_for_update().get(id=draft_player.id)
     
     if offer.status != TransferOfferStatus.PENDING:
-        return JsonResponse({'error': 'Esta oferta ya no se puede rechazar'}, status=409)
+        return JsonResponse({'error': 'Esta oferta ya no se puede contraofertar'}, status=409)
     
-    if offer.transfer_process.max_offers and TransferOffer.objects.filter(transfer_process=offer.transfer_process).count() + 1 > offer.transfer_process.max_offers * 2:
-         return JsonResponse({'error': 'No se pueden realizar más ofertas en esta negociación'}, status=409)
+    # Verificamos el número máximo de ofertas permitidas
+    if offer.transfer_process.max_offers and TransferOffer.objects.filter(
+        transfer_process=process
+    ).count() + 1 > process.max_offers * 2:
+        return JsonResponse({'error': 'No se pueden realizar más ofertas en esta negociación'}, status=409)
     
     try:
-        draft_user = DraftUser.objects.get(user_id=request.user.id, draft=offer.transfer_process.draft_player.draft)
+        draft_user = DraftUser.objects.get(user_id=request.user.id, draft=draft_player.draft)
     except DraftUser.DoesNotExist:
         return JsonResponse({'error': 'Usuario no encontrado'}, status=404)
     
     try:
-        counter_team = Team.objects.get(draft_user=draft_user)
+        counter_team = Team.objects.select_for_update().get(draft_user=draft_user)
     except Team.DoesNotExist:
         return JsonResponse({'error': 'Equipo no encontrado'}, status=404)
     
-    
-    # Invertimos los roles (entendemos que la contraoferta no la ha hecho el equipo que hizo la oferta original)
+    # Determinamos los roles según quién hace la contraoferta
     offering_team = offer.target_team
     target_team = offer.offering_team
     
-    # En caso de que el equipo que hace la contraoferta sea el que hace esta
-    if counter_team == offer.transfer_process.offering_team:
-        # Calculamos el cambio de dinero
+    # Si el equipo que contraoferta es el mismo que hizo la oferta original
+    if counter_team == process.offering_team:
         offset = new_offer - offer.offer
-        # La oferta tiene que ser mayor que la anterior que el jugador habia hecho
-        if offset <= 0:
-            return JsonResponse({'error': 'La oferta debe de ser superior a la anterior'}, status=409)
         
-        # La diferencia de dinero debe de ser mayor que menor o igual que el presupuesto restante del jugador
-        if offset > offer.transfer_process.offering_team.budget:
+        if offset <= 0:
+            return JsonResponse({'error': 'La contraoferta debe ser superior a la oferta anterior'}, status=409)
+        
+        if offset > process.offering_team.budget:
             return JsonResponse({'error': 'No tienes presupuesto suficiente para ofrecer esa cantidad'}, status=409)
         
-        # Cambiamos el presupuesto del equipo
-        offer.transfer_process.offering_team.budget -= offset
-        offer.transfer_process.offering_team.save(update_fields=['budget'])
+        # Actualizamos presupuesto y cantidad retenida
+        process.offering_team.budget -= offset
+        process.offering_team.save(update_fields=['budget'])
         
-        # Cambiamos la cantidad retenida en la negociación
-        offer.transfer_process.amount += offset
-        offer.transfer_process.save(update_fields=['amount'])
+        process.amount += offset
+        process.save(update_fields=['amount'])
         
-        # Cambiamos la inversión de antes
-        offering_team = offer.offering_team
-        target_team = offer.target_team
-        
-
-    # Cambiamos estados y fechas
+        # Revertimos roles para crear correctamente la nueva oferta
+        offering_team = process.offering_team
+        target_team = process.target_team
+    
+    # Marcamos la oferta original como contraofertada
     offer.status = TransferOfferStatus.COUNTERED
     offer.countered_at = datetime.now(UTC)
     offer.save(update_fields=['status', 'countered_at'])
     
-    # Creamos una nueva oferta donde el source sea esta
+    # Creamos la nueva oferta dentro de la misma transacción
     TransferOffer.objects.create(
         offering_team=offering_team,
         target_team=target_team,
         offer=new_offer,
-        transfer_process=offer.transfer_process,
+        transfer_process=process,
         source=TransferOfferSource.OFFER,
         source_offer=offer,
-        draft_player=offer.draft_player
+        draft_player=draft_player
     )
     
     return HttpResponse(status=201)
