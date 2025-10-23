@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { myTeam } from "../api/team";
+import { getLineup, saveLineup } from "../api/team";
+import toast, { Toaster } from "react-hot-toast";
 
 import {
   DndContext,
@@ -29,18 +30,12 @@ const ELEMENT_STYLES = {
 };
 const badgeClass = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 
-function normalizeUrl(url) {
-  if (!url) return null;
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const base = import.meta.env.VITE_API_ORIGIN || "";
-  return `${base}${url}`;
-}
 function toNumber(n) {
   const v = typeof n === "string" ? parseFloat(n) : Number(n);
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Player Card (compacta + cristal) ---------- */
+/* ---------- Player Card ---------- */
 function PlayerCard({ player }) {
   const value =
     "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
@@ -55,7 +50,6 @@ function PlayerCard({ player }) {
         "px-2 pt-5 pb-2",
       ].join(" ")}
     >
-      {/* Badges superiores */}
       <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-md bg-white/15 border border-white/20 text-white/90">
         {player.position}
       </div>
@@ -66,8 +60,6 @@ function PlayerCard({ player }) {
       >
         {player.element || "—"}
       </div>
-
-      {/* Imagen (más pequeña) */}
       <div className="rounded-xl bg-white/20 border border-white/20 mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] flex items-center justify-center overflow-hidden">
         {player.sprite ? (
           <img
@@ -80,8 +72,6 @@ function PlayerCard({ player }) {
           <div className="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] rounded-lg bg-white/10" />
         )}
       </div>
-
-      {/* Nombre y valor */}
       <div className="mt-1 text-center px-1">
         <div className="text-[13px] font-semibold truncate">{player.name}</div>
         {value && <div className="text-[11px] text-white/70 mt-0.5">{value}</div>}
@@ -121,87 +111,45 @@ function DroppableList({ id, itemsIds, children }) {
   );
 }
 
-/* ---------- Util: evitar solapes (en %) ---------- */
-function spreadPositions(points, minDeltaPct = 12, bounds = { min: 1.5, max: 98.5 }) {
-  const out = [];
-  for (const p of points) {
-    let x = p.left;
-    let y = p.top;
-    let tries = 0;
-    while (tries < 80) {
-      let ok = true;
-      for (const q of out) {
-        const tooCloseX = Math.abs(x - q.left) < minDeltaPct;
-        const tooCloseY = Math.abs(y - q.top) < minDeltaPct;
-        if (tooCloseX && tooCloseY) {
-          ok = false;
-          // desplaza alternando ejes
-          if (tries % 2 === 0) x += minDeltaPct * 0.6;
-          else y += (tries % 4 === 1 ? 1 : -1) * minDeltaPct * 0.6;
-          x = Math.max(bounds.min, Math.min(bounds.max, x));
-          y = Math.max(bounds.min, Math.min(bounds.max, y));
-          break;
-        }
-      }
-      if (ok) break;
-      tries++;
-    }
-    out.push({ top: y, left: x });
-  }
-  return out;
-}
-
-/* ---------- Formaciones (GK abajo) ---------- */
+/* ---------- Formaciones ---------- */
 const FORMATIONS = {
   "4-4-2": [
-    // 2 delanteros
     { top: 9, left: 35 },
     { top: 9, left: 65 },
-    // 4 medios
     { top: 28, left: 18 },
     { top: 28, left: 42 },
     { top: 28, left: 58 },
     { top: 28, left: 82 },
-    // 4 defensas
     { top: 53, left: 16 },
     { top: 53, left: 38 },
     { top: 53, left: 62 },
     { top: 53, left: 84 },
-    // portero
     { top: 83, left: 50 },
   ],
   "4-3-3": [
-    // 3 delanteros
     { top: 9, left: 20 },
     { top: 9, left: 50 },
     { top: 9, left: 80 },
-    // 3 medios
     { top: 30, left: 30 },
     { top: 30, left: 50 },
     { top: 30, left: 70 },
-    // 4 defensas
     { top: 55, left: 16 },
     { top: 55, left: 38 },
     { top: 55, left: 62 },
     { top: 55, left: 84 },
-    // portero
     { top: 83, left: 50 },
   ],
   "3-5-2": [
-    // 2 delanteros
     { top: 9, left: 35 },
     { top: 9, left: 65 },
-    // 5 medios
     { top: 26, left: 12 },
     { top: 26, left: 29 },
     { top: 26, left: 50 },
     { top: 26, left: 71 },
     { top: 26, left: 88 },
-    // 3 defensas
     { top: 56, left: 30 },
     { top: 56, left: 50 },
     { top: 56, left: 70 },
-    // portero
     { top: 83, left: 50 },
   ],
 };
@@ -218,33 +166,34 @@ export default function Team() {
     name: "",
     budget: "0",
   });
+  const [formation, setFormation] = useState("4-4-2");
+  const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
   const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
-  const [loading, setLoading] = useState(true);
-  const [formation, setFormation] = useState("4-4-2"); // ✅ por defecto
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
+  /* ---------- Cargar alineación ---------- */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await myTeam(draftId);
-        const players = (data.players || []).map((p) => ({
-          ...p,
-          element: p.element === "Air" ? "Wind" : p.element,
-          sprite: normalizeUrl(p.sprite),
-          value: toNumber(p.value),
-        }));
+        const data = await getLineup(draftId);
+        setFormation(data.formation || "4-4-2");
         setTeam({
-          starters: players.slice(0, 11),
-          bench: players.slice(11, 16),
-          reserves: players.slice(16),
-          name: data.name ?? "",
-          budget: data.budget ?? "0",
+          starters: data.starters || [],
+          bench: data.bench || [],
+          reserves: data.reserves || [],
+          name: data.team || "",
+          budget: data.budget || "0",
         });
+      } catch (err) {
+        console.error("Error al cargar alineación:", err);
+        toast.error("Error al cargar la alineación");
       } finally {
         setLoading(false);
       }
@@ -252,34 +201,34 @@ export default function Team() {
     load();
   }, [draftId]);
 
-  const totals = useMemo(() => {
-    const all = [...team.starters, ...team.bench, ...team.reserves];
-    const totalValue = all.reduce((a, p) => a + toNumber(p.value), 0);
-    const budgetNum = toNumber(team.budget);
-    return {
-      totalValue,
-      budgetNum,
-      byBlock: {
-        starters: team.starters.reduce((a, p) => a + toNumber(p.value), 0),
-        bench: team.bench.reduce((a, p) => a + toNumber(p.value), 0),
-        reserves: team.reserves.reduce((a, p) => a + toNumber(p.value), 0),
-      },
-    };
-  }, [team]);
+  /* ---------- Guardar alineación ---------- */
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        formation,
+        starters: team.starters.map((p, i) => ({ id: p.id, order: i })),
+        bench: team.bench.map((p, i) => ({ id: p.id, order: i })),
+        reserves: team.reserves.map((p, i) => ({ id: p.id, order: i })),
+      };
+      await saveLineup(draftId, payload);
+      setHasChanges(false);
+      toast.success("Alineación guardada correctamente");
+    } catch (err) {
+      console.error("Error al guardar alineación:", err);
+      toast.error("Error al guardar la alineación");
+    } finally {
+      setSaving(false);
+    }
+  }, [draftId, formation, team]);
 
-  /* ---------- DnD helpers (swap) ---------- */
+  /* ---------- Drag & Drop ---------- */
   const findItem = (id) => {
     const prefix = id[0];
     const key = prefix === "s" ? "starters" : prefix === "b" ? "bench" : "reserves";
     const itemId = parseInt(id.split("-")[1]);
     const index = team[key].findIndex((p) => p.id === itemId);
     return { key, index, item: team[key][index] };
-  };
-
-  const collisionStrategy = (args) => {
-    const c = pointerWithin(args);
-    if (c.length > 0) return c;
-    return rectIntersection(args);
   };
 
   const handleDragStart = (e) => {
@@ -298,7 +247,6 @@ export default function Team() {
     const to = findItem(over.id);
 
     if (to.item) {
-      // Intercambio
       setTeam((prev) => {
         const next = { ...prev };
         const fromList = [...next[from.key]];
@@ -309,12 +257,12 @@ export default function Team() {
         toList[to.index] = a;
         next[from.key] = fromList;
         next[to.key] = toList;
+        setHasChanges(true);
         return next;
       });
       return;
     }
 
-    // mover a contenedor vacío (si ocurre)
     const containers = ["starters", "bench", "reserves"];
     const container = containers.find((c) => c === over.id);
     if (container) {
@@ -326,30 +274,35 @@ export default function Team() {
         const [player] = src.splice(from.index, 1);
         next[from.key] = src;
         next[container] = [...next[container], player];
+        setHasChanges(true);
         return next;
       });
     }
   };
 
+  const collisionStrategy = (args) => {
+    const c = pointerWithin(args);
+    if (c.length > 0) return c;
+    return rectIntersection(args);
+  };
+
+  /* ---------- UI ---------- */
   if (loading) {
     return (
       <main className="p-5 bg-slate-950 min-h-screen text-white flex items-center justify-center">
+        <Toaster />
         Cargando equipo…
       </main>
     );
   }
 
-  /* ---------- Campo ---------- */
-  const SAFE_INSET_PX = 8;
-  const MIN_SEPARATION_PCT = 12;
-  const base = FORMATIONS[formation] || FORMATIONS["4-4-2"];
-  const fieldPositions = spreadPositions(base, MIN_SEPARATION_PCT, {
-    min: 1.5,
-    max: 98.5,
-  });
+  const fieldPositions = FORMATIONS[formation] || FORMATIONS["4-4-2"];
 
   return (
     <main className="p-5 bg-slate-950 min-h-screen text-white">
+      {/* Toasts */}
+      <Toaster position="top-center" toastOptions={{ duration: 2500 }} />
+
       <div className="max-w-6xl mx-auto text-center mb-6">
         <div className="flex items-center justify-between gap-3">
           <button
@@ -359,35 +312,44 @@ export default function Team() {
             ← Volver
           </button>
 
-          {/* Selector de formación (fuente negra) */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-white/70 hidden sm:inline">Formación:</label>
+          <div className="flex items-center gap-3">
             <select
               className="bg-white text-black border border-slate-300 rounded-md px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-slate-400"
               value={formation}
-              onChange={(e) => setFormation(e.target.value)}
+              onChange={(e) => {
+                setFormation(e.target.value);
+                setHasChanges(true);
+              }}
             >
               <option>4-4-2</option>
               <option>4-3-3</option>
               <option>3-5-2</option>
             </select>
+
+            <button
+              disabled={!hasChanges || saving}
+              onClick={handleSave}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                hasChanges
+                  ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                  : "bg-white/10 text-white/60 cursor-not-allowed"
+              }`}
+            >
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </button>
           </div>
         </div>
 
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
-        <p className="text-white/70 mt-1">
-          Presupuesto: {totals.budgetNum.toLocaleString()}€ · Valor:{" "}
-          {totals.totalValue.toLocaleString()}€
-        </p>
       </div>
 
+      {/* Campo de fútbol */}
       <DndContext
         sensors={sensors}
         collisionDetection={collisionStrategy}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Campo con zona segura mínima y fondo por URL */}
         <div
           className="relative mx-auto rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 border border-white/10"
           style={{
@@ -400,37 +362,30 @@ export default function Team() {
             height: "780px",
           }}
         >
-          <div className="absolute" style={{ inset: `${SAFE_INSET_PX}px` }}>
-            <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
-              {team.starters.map((p, i) => {
-                const pos = fieldPositions[i] || { top: 50, left: 50 };
-                return (
-                  <div
-                    key={`s-${p.id}`}
-                    style={{
-                      position: "absolute",
-                      top: `${pos.top}%`,
-                      left: `${pos.left}%`,
-                      transform: "translate(-50%, -50%)",
-                    }}
-                  >
-                    <SortablePlayer id={`s-${p.id}`} player={p} />
-                  </div>
-                );
-              })}
-            </DroppableList>
-          </div>
+          <DroppableList id="starters" itemsIds={team.starters.map((p) => `s-${p.id}`)}>
+            {team.starters.map((p, i) => {
+              const pos = fieldPositions[i] || { top: 50, left: 50 };
+              return (
+                <div
+                  key={`s-${p.id}`}
+                  style={{
+                    position: "absolute",
+                    top: `${pos.top}%`,
+                    left: `${pos.left}%`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <SortablePlayer id={`s-${p.id}`} player={p} />
+                </div>
+              );
+            })}
+          </DroppableList>
         </div>
 
-        {/* BANQUILLO / RESERVA */}
+        {/* Banquillo / Reserva */}
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6 mt-10">
           <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
-            <header className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-semibold">Banquillo</h2>
-              <span className="text-xs text-white/60">
-                {team.bench.length}/5 · Valor: {totals.byBlock.bench.toLocaleString()}€
-              </span>
-            </header>
+            <h2 className="text-xl font-semibold mb-3">Banquillo</h2>
             <DroppableList id="bench" itemsIds={team.bench.map((p) => `b-${p.id}`)}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {team.bench.map((p) => (
@@ -441,13 +396,7 @@ export default function Team() {
           </section>
 
           <section className="bg-white/5 rounded-xl p-4 shadow ring-1 ring-white/10 border border-white/10">
-            <header className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-semibold">Reserva</h2>
-              <span className="text-xs text-white/60">
-                {team.reserves.length} jugadores · Valor:{" "}
-                {totals.byBlock.reserves.toLocaleString()}€
-              </span>
-            </header>
+            <h2 className="text-xl font-semibold mb-3">Reserva</h2>
             <DroppableList id="reserves" itemsIds={team.reserves.map((p) => `r-${p.id}`)}>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {team.reserves.map((p) => (
