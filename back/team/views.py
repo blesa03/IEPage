@@ -135,6 +135,7 @@ def get_lineup(request: HttpRequest, draft_id: int):
         return {
             "id": dp.id,
             "name": p.name,
+            "gender": p.gender,
             "position": p.position,
             "element": "Wind" if p.element == "Air" else p.element,
             "sprite": (p.sprite.url if p.sprite else None),
