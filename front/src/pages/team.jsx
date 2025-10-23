@@ -37,6 +37,7 @@ const ELEMENT_STYLES = {
   Wood: "bg-green-700/35 text-green-200 ring-1 ring-green-400/40",
   default: "bg-slate-700/35 text-white/85 ring-1 ring-slate-400/40",
 };
+const GENDER_LABEL = { M: "Masculino", F: "Femenino" };
 const badgeClass = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 const pill = "text-xs px-2 py-0.5 rounded bg-white/10 border border-white/10";
 
@@ -296,17 +297,32 @@ function PlayerTechPopup({
 
             {/* Datos */}
             <div className="bg-white/5 p-6">
-              <h3 className="text-2xl font-semibold">INFORMACIÓN DEL JUGADOR</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className={pill}>Nombre: {player.name}</span>
-                <span className={pill}>Sexo: {player.gender || "—"}</span>
-                <span className={pill}>Posición: {player.position || "—"}</span>
-                <span className={pill}>Elemento: {player.element || "—"}</span>
-                {"value" in player && (
-                  <span className={pill}>
-                    Valor: {Number(player.value || 0).toLocaleString()}€
+              {/* Título = nombre del jugador */}
+              <h3 className="text-2xl font-semibold">{player.name}</h3>
+
+              {/* Info en 2 columnas */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
+                  <span className="text-white/60">Sexo:</span>{" "}
+                  <span className="font-medium">{GENDER_LABEL[player.gender] || "—"}</span>
+                </div>
+
+                <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
+                  <span className="text-white/60">Posición:</span>{" "}
+                  <span className="font-medium">{player.position || "—"}</span>
+                </div>
+
+                <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
+                  <span className="text-white/60">Elemento:</span>{" "}
+                  <span className="font-medium">{player.element || "—"}</span>
+                </div>
+
+                <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
+                  <span className="text-white/60">Valor:</span>{" "}
+                  <span className="font-medium">
+                    {Number(player.value || 0).toLocaleString()}€
                   </span>
-                )}
+                </div>
               </div>
             </div>
 
