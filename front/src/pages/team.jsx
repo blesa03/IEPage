@@ -67,7 +67,7 @@ function PlayerCard({ player }) {
         className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20 flex items-end justify-center"
         style={{
           background:
-            "linear-gradient(to top, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0) 90%)",
+            "linear-gradient(to top, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.3) 25%, rgba(255,255,255,0.12) 45%, rgba(255,255,255,0) 60%)",
         }}
       >
         {player.sprite ? (
