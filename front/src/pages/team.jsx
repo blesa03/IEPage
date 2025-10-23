@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getLineup,
   saveLineup,
-  myTeam,
+  // 🔽 Asegúrate de tener estas funciones en ../api/team
   getPlayerTechniques,
   getTechniquesCatalog,
   addPlayerTechnique,
@@ -45,43 +45,6 @@ function toNumber(n) {
   const v = typeof n === "string" ? parseFloat(n) : Number(n);
   return Number.isFinite(v) ? v : 0;
 }
-
-useEffect(() => {
-  const load = async () => {
-    setLoading(true);
-    try {
-      const data = await getLineup(draftId);
-      setFormation(data.formation || "4-4-2");
-      setTeam(prev => ({
-        ...prev,
-        starters: data.starters || [],
-        bench: data.bench || [],
-        reserves: data.reserves || [],
-        name: data.team || "",
-        // data.budget no existe en este endpoint; lo rellenamos luego con myTeam
-      }));
-
-      // ← Presupuesto del equipo
-      const t = await myTeam(draftId);
-      setTeam(prev => ({ ...prev, budget: t?.budget || 0 }));
-    } catch (err) {
-      console.error("Error al cargar alineación:", err);
-      toast.error("Error al cargar la alineación");
-    } finally {
-      setLoading(false);
-    }
-  };
-  load();
-}, [draftId]);
-const allPlayers = useMemo(
-  () => [...team.starters, ...team.bench, ...team.reserves],
-  [team]
-);
-
-const squadValue = useMemo(
-  () => allPlayers.reduce((acc, p) => acc + Number(p?.value || 0), 0),
-  [allPlayers]
-);
 
 /* ---------- Player Card ---------- */
 function PlayerCard({ player }) {
@@ -758,14 +721,6 @@ export default function Team() {
         </div>
 
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
-        <div className="mt-2 flex items-center justify-center gap-3 text-sm">
-        <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
-          Presupuesto: {Number(team.budget || 0).toLocaleString()}€
-        </span>
-        <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
-          Valor plantilla: {squadValue.toLocaleString()}€
-        </span>
-      </div>
       </div>
 
       {/* Campo de fútbol */}
