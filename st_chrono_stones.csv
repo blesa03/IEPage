@@ -1,0 +1,143 @@
+﻿titulo,tipo,elemento,usuarios,potencia
+A Todo Vapor,Bloqueo,Fuego,1,50
+Acrobacia Robótica,Bloqueo,Montaña,3,180
+Aguijón Letal,Tiro,Fuego,1,120
+Agujero Blanco,Atajo,Aire,1,180
+Aplastamiento,Atajo,Bosque,1,80
+Asalto Mortal,Tiro,Montaña,1,200
+Ataque de Corazón,Tiro,Aire (♀) Montaña (♂),1,190
+Ataque de Garza,Regate,Fuego,1,100
+Ataque Omega,Tiro,Neutro,3,200
+Aullido de Licántropo,Tiro,Fuego,1,180
+Avance Chispeante,Regate,Fuego,1,140
+Balón de Plasma,Tiro,Aire,1,80
+Barrena Voladora,Regate,Aire,1,90
+Barreno de Fuego,Bloqueo,Fuego,1,100
+Bimano Celestial,Atajo,Montaña,1,180
+Bobina Eléctrica,Bloqueo,Bosque,1,80
+Brisa Deslizante,Regate,Aire,1,70
+Cabezazo Gigatón,Tiro,Montaña,1,80
+Campo Minado,Bloqueo,Neutro,1,170
+Captura Excelente,Atajo,Montaña,1,60
+Caída Planetaria,Tiro,Montaña,1,120
+Caída Prehistórica,Bloqueo,Aire,1,180
+Cañonazo de Fragmentos,Tiro,Neutro,1,185
+Choque Directo,Regate,Bosque,1,80
+Chut Ancestral,Tiro,Montaña,1,160
+Chut Prehistórico,Tiro,Montaña,1,80
+Ciclón Blanco,Tiro,Aire,1,150
+Ciclón Humano,Atajo,Montaña,1,80
+Ciclón Oscuro,Atajo,Bosque,1,180
+Colmillo Retorcido,Tiro,Montaña,1,180
+Corriente Negra,Regate,Montaña,1,160
+Corte Big Bang,Tiro,Bosque,1,185
+Corte de Arena,Atajo,Fuego,1,120
+Danza de Plumas,Bloqueo,Aire,1,160
+Defensa de Muñecos,Atajo,Bosque,1,160
+Descarga de Colores,Atajo,Bosque,1,160
+Despeje Medialuna,Atajo,Neutro,1,180
+Despliegue de Señuelos,Regate,Neutro,1,140
+Disparo Doble,Tiro,Neutro,1,130
+Doble Hélice,Tiro,Bosque,1,140
+Doble Trallazo Planetario,Tiro,Montaña,2,150
+Dragón Ascendente,Regate,Montaña,1,130
+El Ojo del Huracán,Regate,Bosque,1,180
+Engranajes Aceleradores,Tiro,Montaña,1,120
+Escena Nocturna,Tiro,Aire,2,185
+Escudo Caparazón,Bloqueo,Montaña,1,200
+Espada Real,Reagate,Montaña,1,160
+Espada Sombría,Reagate,Montaña,1,160
+Espinas Insidiosas,Bloqueo,Aire,1,200
+Estampida en Línea,Regate,Neutro,3,130
+Estandarte de Valquiria,Bloqueo,Bosque,1,170
+Estocada Samurai,Tiro,Montaña,1,170
+Estrella de Roca,Bloqueo,Fuego,1,160
+Estrella Oscura,Tiro,Bosque,1,120
+Fiebre de Luna Llena,Tiro,Bosque,1,200
+Fiesta Floral,Bloqueo,Montaña,1,140
+Flamberge,Tiro,Fuego,1,250
+Flecha de Cupido,Tiro,Fuego,1,130
+Flecha del Alba,Bloqueo,Fuego,1,180
+Formateo de Disco,Regate,Neutro,1,160
+Fortaleza Nocturna,Bloqueo,Bosque,3,80
+Fuego Helado,Tiro,Fuego Aire,2,0
+Fulgor Majestuoso,Tiro,Aire,1,180
+Futuro Negativo,Tiro,Fuego,2,160
+Garras Llameantes,Regate,Fuego,1,200
+Giro Atómico,Tiro,Bosque,1,160
+Giroparada,Atajo,Bosque,1,130
+Golpe Cataclismo,Tiro,Montaña,1,140
+Golpe de Atenea,Tiro,Aire,1,160
+Golpe Justiciero,Tiro,Aire,1,200
+Gran Explosión,Tiro,Neutro,2,170
+Grumo Pegapasta,Bloqueo,Fuego,1,130
+Guardia Sombría,Bloqueo,Aire,1,160
+Géiser Gigante,Atajo,Aire,1,170
+Hacha del Azote Negro,Tiro,Bosque,1,200
+Himno de Atenea,Regate,Bosque,1,160
+Hoz de Remolino,Regate,Aire,1,140
+Ilusión Deslumbrante,Bloqueo,Bosque,1,180
+Impulso del Equipo Definitivo,Tiro,Aire,3,200
+Impulso Efímero,Tiro,Bosque,1,140
+Jungla Profunda,Bloqueo,Bosque,3,160
+Katana Crisantemo,Tiro,Fuego,1,150
+La Flamme,Bloqueo,Fuego,1,180
+La Tempestad,Regate,Bosque,1,180
+Lanza de Carámbanos,Tiro,Aire,1,170
+Lanza de Cazador,Bloqueo,Aire,1,180
+Leopardo de la Ventisca,Tiro,Aire,1,130
+Lluvia de Azufre,Tiro,Bosque,2,165
+Magnetismo,Bloqueo,Bosque,1,120
+Mano Celestial,Atajo,Montaña,1,65
+Mano Celestial V,Atajo,Montaña,1,160
+Mano Celestial X,Atajo,Fuego,1,180
+Mano de Pingüinos,Atajo,Neutro,1,180
+Mano Grandiosa,Atajo,Montaña,1,210
+Mano Mágica,Atajo,Montaña,1,200
+Mano Sombría,Atajo,Bosque,1,160
+Manos Liberadas,Atajo,Fuego,1,160
+Mordisco de Vampiro,Tiro,Montaña,1,185
+Muralla de las Montañas,Bloqueo,Montaña,1,130
+Obstrucción Eléctrica,Bloqueo,Neutro,1,80
+Onda Chispeante,Tiro,Aire,1,110
+Parada en Plancha,Atajo,Montaña,1,100
+Pared Solitaria,Regate,Fuego,1,70
+Pentagrama,Tiro,Bosque,1,110
+Pirueta Rascacielos,Bloqueo,Montaña,1,120
+Polen Devastador,Tiro,Montaña,1,130
+Presa Fractal,Bloqueo,Montaña,3,100
+Presa Titánica,Atajo,Montaña,1,180
+Prisión Escarlata,Tiro,Montaña,1,160
+Rayo de Puño,Atajo,Fuego,1,140
+Rayo Demoníaco,Regate,Montaña,1,200
+Recepción Negativa,Atajo,Aire,1,140
+Red de Caza,Bloqueo,Bosque,1,130
+Relámpago Bestial,Regate,Bosque,1,180
+Remate Rebotado,Tiro,Bosque,1,60
+Rematerialización,Regate,Bosque,0,70
+Repulsión,Atajo,Neutro,1,160
+Ritmo Agresivo,Regate,Fuego,1,100
+Rizo de Dragón,Tiro,Aire,1,140
+Robo Fantástico,Bloqueo,Aire,1,50
+Romance de los Tres Reinos,Atajo,Parada,1,140
+Ruptura Relámpago,Tiro,Aire,3,160
+Salto Explosivo,Regate,Fuego,1,120
+Soy Todopoderoso,Tiro,Montaña,1,200
+Superremate Rebotado,Tiro,Montaña,2,0
+Tiro Amasado,Tiro,Fuego,1,100
+Tiro de Arcabuz,Tiro,Fuego,2,110
+Tiro Magnético,Tiro,Bosque,1,80
+Tiro Rotativo,Tiro,Aire,1,60
+Tiro Sombrío,Tiro,Fuego,1,160
+Tiro Supermasivo,Tiro,Montaña,1,170
+Tiro Vendaval,Tiro,Aire,1,60
+Tormenta Dimensional,Tiro,Bosque,1,150
+Tormenta Eléctrica,Tiro,Aire,1,170
+Tormenta Solar,Tiro,Fuego,1,140
+Tornado de Fuego DD,Tiro,Fuego,2,180
+Tornado de Fuego DT,Tiro,Fuego,3,200
+Triángulo Letal Final,Tiro,Bosque,3,200
+Túnel Tornado,Regate,Aire,1,180
+Viento Celestial,Tiro,Aire,1,165
+Visto y No Visto,Regate,Bosque,1,100
+Vuelo de Fénix,Tiro,Fuego,1,160
