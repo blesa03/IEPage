@@ -3,8 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getLineup,
   saveLineup,
-  myTeam, // ⬅️ nuevo
-  // ST APIs
+  // 🔽 Asegúrate de tener estas funciones en ../api/team
   getPlayerTechniques,
   getTechniquesCatalog,
   addPlayerTechnique,
@@ -38,6 +37,7 @@ const ELEMENT_STYLES = {
   Wood: "bg-green-700/35 text-green-200 ring-1 ring-green-400/40",
   default: "bg-slate-700/35 text-white/85 ring-1 ring-slate-400/40",
 };
+const GENDER_LABEL = { M: "Masculino", F: "Femenino" };
 const badgeClass = (el) => ELEMENT_STYLES[el] || ELEMENT_STYLES.default;
 const pill = "text-xs px-2 py-0.5 rounded bg-white/10 border border-white/10";
 
@@ -193,7 +193,7 @@ function PlayerTechPopup({
         loadCatalog();
         return;
       }
-      // Si está lleno: pedir cuál reemplazar (temporal sencillo)
+      // Si está lleno: intercambio simple con prompt
       const idxStr = window.prompt(
         `Ya tienes 6/6. ¿Cuál reemplazas?\n` +
           techs.map((t, i) => `${i + 1}) ${t.name}`).join("\n") +
@@ -297,9 +297,16 @@ function PlayerTechPopup({
 
             {/* Datos */}
             <div className="bg-white/5 p-6">
+              {/* Título = nombre del jugador */}
               <h3 className="text-2xl font-semibold">{player.name}</h3>
 
+              {/* Info en 2 columnas */}
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
+                  <span className="text-white/60">Sexo:</span>{" "}
+                  <span className="font-medium">{GENDER_LABEL[player.gender] || "—"}</span>
+                </div>
+
                 <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
                   <span className="text-white/60">Posición:</span>{" "}
                   <span className="font-medium">{player.position || "—"}</span>
@@ -543,28 +550,20 @@ export default function Team() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
-  /* ---------- Cargar alineación + presupuesto ---------- */
+  /* ---------- Cargar alineación ---------- */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const data = await getLineup(draftId);
         setFormation(data.formation || "4-4-2");
-        setTeam((prev) => ({
-          ...prev,
+        setTeam({
           starters: data.starters || [],
           bench: data.bench || [],
           reserves: data.reserves || [],
           name: data.team || "",
-        }));
-
-        // Presupuesto desde myTeam
-        try {
-          const t = await myTeam(draftId);
-          setTeam((prev) => ({ ...prev, budget: t?.budget || 0 }));
-        } catch {
-          // si falla, no rompemos la vista
-        }
+          budget: data.budget || "0",
+        });
       } catch (err) {
         console.error("Error al cargar alineación:", err);
         toast.error("Error al cargar la alineación");
@@ -600,12 +599,6 @@ export default function Team() {
   const allPlayers = useMemo(
     () => [...team.starters, ...team.bench, ...team.reserves],
     [team]
-  );
-
-  // Valor total de la plantilla
-  const squadValue = useMemo(
-    () => allPlayers.reduce((acc, p) => acc + Number(p?.value || 0), 0),
-    [allPlayers]
   );
 
   /* ---------- Drag & Drop ---------- */
@@ -728,16 +721,6 @@ export default function Team() {
         </div>
 
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
-
-        {/* Presupuesto + Valor plantilla */}
-        <div className="mt-2 flex items-center justify-center gap-3 text-sm">
-          <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
-            Presupuesto: {Number(team.budget || 0).toLocaleString()}€
-          </span>
-          <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
-            Valor plantilla: {squadValue.toLocaleString()}€
-          </span>
-        </div>
       </div>
 
       {/* Campo de fútbol */}
