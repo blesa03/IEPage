@@ -62,15 +62,13 @@ function PlayerCard({ player }) {
         {player.element || "—"}
       </div>
 
-      {/* Contenedor de imagen con foco inferior y difuminado lateral */}
+      {/* Contenedor de imagen con foco vertical desde abajo */}
       <div
         className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20"
         style={{
           position: "relative",
           background:
-            "linear-gradient(to top, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.05) 80%, rgba(255,255,255,0) 90%)",
-          boxShadow:
-            "inset 0 0 18px 4px rgba(255,255,255,0.25), inset 8px 0 10px -6px rgba(255,255,255,0.1), inset -8px 0 10px -6px rgba(255,255,255,0.1)",
+            "linear-gradient(to top, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0) 90%)",
         }}
       >
         {player.sprite ? (
