@@ -2,7 +2,7 @@ from django.http import JsonResponse, HttpRequest
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch
+from django.db.models import Prefetch, F
 from django.db import transaction
 import json
 
@@ -379,7 +379,7 @@ def add_player_technique(request: HttpRequest, draft_id: int, dp_id: int):
         with transaction.atomic():
             DraftPlayerTechnique.objects.filter(
                 draft_player=dp, order__gte=insert_at
-            ).update(order=models.F("order") + 1)
+            ).update(order=F("order") + 1)
             dpt = DraftPlayerTechnique.objects.create(
                 draft_player=dp, technique=st, order=insert_at
             )
@@ -461,6 +461,6 @@ def delete_player_technique(request: HttpRequest, draft_id: int, dp_id: int, tec
         # Compactar huecos: bajar las superiores
         DraftPlayerTechnique.objects.filter(
             draft_player=dp, order__gt=removed_order
-        ).update(order=models.F("order") - 1)
+        ).update(order=F("order") - 1)
 
     return JsonResponse({"ok": True})
