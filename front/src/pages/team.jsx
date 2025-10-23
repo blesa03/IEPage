@@ -130,7 +130,7 @@ const FORMATIONS = {
     { top: 40, left: 18 },
     { top: 40, left: 42 },
     { top: 40, left: 58 },
-    { top: 35, left: 82 },
+    { top: 40, left: 82 },
     { top: 65, left: 16 },
     { top: 65, left: 38 },
     { top: 65, left: 62 },
