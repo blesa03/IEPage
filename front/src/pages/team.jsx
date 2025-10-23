@@ -62,11 +62,10 @@ function PlayerCard({ player }) {
         {player.element || "—"}
       </div>
 
-      {/* Contenedor de imagen con foco vertical desde abajo */}
+      {/* Contenedor de imagen con foco inferior y sprite pegado abajo */}
       <div
-        className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20"
+        className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20 flex items-end justify-center"
         style={{
-          position: "relative",
           background:
             "linear-gradient(to top, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0) 90%)",
         }}
@@ -75,11 +74,11 @@ function PlayerCard({ player }) {
           <img
             src={player.sprite}
             alt={player.name}
-            className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] object-cover"
+            className="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] object-contain object-bottom"
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] bg-white/10" />
+          <div className="w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] bg-white/10" />
         )}
       </div>
 
