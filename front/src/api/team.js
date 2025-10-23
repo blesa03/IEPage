@@ -54,3 +54,38 @@ export const saveLineup = async (draftId, lineupData) => {
   const res = await api.put(`/team/${draftId}/lineup/save`, lineupData);
   return res.data;
 };
+
+export async function getPlayerTechniques(draftId, dpId) {
+  const res = await api.get(`/team/${draftId}/players/${dpId}/techniques/`);
+  return res.data;
+}
+
+export async function getTechniquesCatalog(draftId, dpId, { search = "", type = "", element = "", excludeAssigned = true } = {}) {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (type) params.set("type", type);
+  if (element) params.set("element", element);
+  if (excludeAssigned) params.set("exclude_assigned", "1");
+  const res = await api.get(`/team/${draftId}/players/${dpId}/techniques/catalog?${params.toString()}`);
+  return res.data;
+}
+
+export async function addPlayerTechnique(draftId, dpId, techniqueId, order = null) {
+  await ensureCsrf();
+  const body = { technique_id: techniqueId };
+  if (Number.isInteger(order)) body.order = order;
+  const res = await api.post(`/team/${draftId}/players/${dpId}/techniques/add`, body);
+  return res.data;
+}
+
+export async function reorderPlayerTechniques(draftId, dpId, orderedIds) {
+  await ensureCsrf();
+  const res = await api.put(`/team/${draftId}/players/${dpId}/techniques/reorder`, { ordered_ids: orderedIds });
+  return res.data;
+}
+
+export async function deletePlayerTechnique(draftId, dpId, techId) {
+  await ensureCsrf();
+  const res = await api.delete(`/team/${draftId}/players/${dpId}/techniques/${techId}`);
+  return res.data;
+}
