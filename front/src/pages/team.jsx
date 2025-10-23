@@ -35,7 +35,7 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Player Card (fondo anaranjado + foco inferior en la imagen) ---------- */
+/* ---------- Player Card (azulada + foco inferior sin bordes redondeados) ---------- */
 function PlayerCard({ player }) {
   const value =
     "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
@@ -44,11 +44,11 @@ function PlayerCard({ player }) {
     <div
       className={[
         "relative w-24 sm:w-28 rounded-2xl",
-        // Fondo anaranjado translúcido (complemento del azul)
-        "bg-orange-400/15 backdrop-blur-md",
-        // Borde/aro con matiz naranja sutil
-        "border border-orange-300/20 ring-1 ring-orange-300/20",
-        "shadow-lg hover:shadow-xl hover:bg-orange-400/20 transition",
+        // Fondo original translúcido azulado
+        "bg-white/10 backdrop-blur-md",
+        // Borde y aro suaves tipo cristal
+        "border border-white/15 ring-1 ring-white/10",
+        "shadow-lg hover:shadow-xl hover:bg-white/12 transition",
         "px-2 pt-5 pb-2",
       ].join(" ")}
     >
@@ -64,23 +64,19 @@ function PlayerCard({ player }) {
         {player.element || "—"}
       </div>
 
-      {/* Contenedor de imagen:
-          - Mismo color del card
-          - SOLO borde inferior blanco
-          - Degradado hacia arriba (foco inferior)
-      */}
-      <div className="relative rounded-xl mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-orange-400/15 border-b border-white/60">
-        {/* Foco inferior (degradado de blanco a transparente hacia arriba) */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/40 via-white/10 to-transparent" />
+      {/* Contenedor de imagen con efecto foco desde abajo (sin bordes redondeados) */}
+      <div className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20">
+        {/* Foco inferior (gradiente hacia arriba) */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/30 via-white/10 to-transparent" />
         {player.sprite ? (
           <img
             src={player.sprite}
             alt={player.name}
-            className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] object-cover rounded-lg"
+            className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] rounded-lg bg-white/10" />
+          <div className="absolute inset-0 m-auto w-[56px] h-[56px] sm:w-[64px] sm:h-[64px] bg-white/10" />
         )}
       </div>
 
