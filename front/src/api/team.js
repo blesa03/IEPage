@@ -1,4 +1,4 @@
-import { api } from "../api";
+import { api, ensureCsrf } from "../api";
 
 /**
  * Devuelve la información pública de un equipo por su ID.
@@ -45,12 +45,11 @@ export const getLineup = async (draftId) => {
  * }
  */
 export const saveLineup = async (draftId, lineupData) => {
-  if (!draftId) {
-    throw new Error("saveLineup: falta draftId");
-  }
-  if (!lineupData) {
-    throw new Error("saveLineup: falta lineupData");
-  }
+  if (!draftId) throw new Error("saveLineup: falta draftId");
+  if (!lineupData) throw new Error("saveLineup: falta lineupData");
+
+  // ✅ Aseguramos que el CSRF está presente antes del PUT
+  await ensureCsrf();
 
   const res = await api.put(`/team/${draftId}/lineup/save`, lineupData);
   return res.data;
