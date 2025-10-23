@@ -35,7 +35,7 @@ function toNumber(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
-/* ---------- Player Card (azulada + foco inferior sin bordes redondeados) ---------- */
+/* ---------- Player Card ---------- */
 function PlayerCard({ player }) {
   const value =
     "value" in player ? toNumber(player.value).toLocaleString() + "€" : "";
@@ -44,9 +44,7 @@ function PlayerCard({ player }) {
     <div
       className={[
         "relative w-24 sm:w-28 rounded-2xl",
-        // Fondo original translúcido azulado
         "bg-white/10 backdrop-blur-md",
-        // Borde y aro suaves tipo cristal
         "border border-white/15 ring-1 ring-white/10",
         "shadow-lg hover:shadow-xl hover:bg-white/12 transition",
         "px-2 pt-5 pb-2",
@@ -64,10 +62,17 @@ function PlayerCard({ player }) {
         {player.element || "—"}
       </div>
 
-      {/* Contenedor de imagen con efecto foco desde abajo (sin bordes redondeados) */}
-      <div className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20">
-        {/* Foco inferior (gradiente hacia arriba) */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-white/30 via-white/10 to-transparent" />
+      {/* Contenedor de imagen con foco inferior y difuminado lateral */}
+      <div
+        className="relative mx-auto w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] overflow-hidden bg-white/20"
+        style={{
+          position: "relative",
+          background:
+            "linear-gradient(to top, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.25) 40%, rgba(255,255,255,0.05) 80%, rgba(255,255,255,0) 90%)",
+          boxShadow:
+            "inset 0 0 18px 4px rgba(255,255,255,0.25), inset 8px 0 10px -6px rgba(255,255,255,0.1), inset -8px 0 10px -6px rgba(255,255,255,0.1)",
+        }}
+      >
         {player.sprite ? (
           <img
             src={player.sprite}
