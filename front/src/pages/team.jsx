@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getLineup,
   saveLineup,
-  // 🔽 Asegúrate de tener estas funciones en ../api/team
+  myTeam, // ← para presupuesto y géneros
+  // ST APIs
   getPlayerTechniques,
   getTechniquesCatalog,
   addPlayerTechnique,
@@ -141,6 +142,7 @@ function PlayerTechPopup({
   players,
   index,
   setIndex,
+  genderMap, // ← para resolver género cuando no viene en get_lineup
 }) {
   const player = players?.[index];
   const dpId = player?.id;
@@ -193,25 +195,46 @@ function PlayerTechPopup({
         loadCatalog();
         return;
       }
-      // Si está lleno: intercambio simple con prompt
-      const idxStr = window.prompt(
-        `Ya tienes 6/6. ¿Cuál reemplazas?\n` +
-          techs.map((t, i) => `${i + 1}) ${t.name}`).join("\n") +
-          `\n\nEscribe un número 1-6`
-      );
-      const idx = Number(idxStr) - 1;
-      if (!Number.isInteger(idx) || idx < 0 || idx > 5) return;
-
-      const target = techs[idx];
-      await deletePlayerTechnique(draftId, dpId, target.id);
-      await addPlayerTechnique(draftId, dpId, tech.id, target.order);
-
-      const fresh = (await getPlayerTechniques(draftId, dpId)).techniques || [];
-      setTechs(fresh.sort((a, b) => a.order - b.order));
-      toast.success(`Reemplazada '${target.name}' por '${tech.name}'`);
-      loadCatalog();
+      // Si está lleno: intercambio simple pidiendo slot en la tarjeta
+      toast("Haz clic en el slot a reemplazar (1–6).", { icon: "🔁" });
+      setCatalogOpen(false); // ocultamos el catálogo para elegir slot en la lista
+      // guardamos técnica candidata en estado temporal
+      setCatalog([{ ...tech, __pendingSwap: true }]);
     } catch (e) {
       toast.error(e.message || "No se pudo añadir");
+    }
+  }
+
+  // Si hay una técnica con __pendingSwap, un click en un slot lleno la sustituye:
+  async function swapInto(slotIndex) {
+    const pending = catalog.find((t) => t.__pendingSwap);
+    if (!pending) return;
+    const target = techs[slotIndex];
+    if (!target) {
+      // si el slot está vacío simplemente añadimos en esa posición
+      try {
+        await addPlayerTechnique(draftId, dpId, pending.id, slotIndex);
+        const fresh = (await getPlayerTechniques(draftId, dpId)).techniques || [];
+        setTechs(fresh.sort((a, b) => a.order - b.order));
+        toast.success(`Añadida en el slot ${slotIndex + 1}`);
+      } catch (e) {
+        toast.error("No se pudo añadir en el slot");
+      } finally {
+        setCatalog((c) => c.filter((x) => !x.__pendingSwap));
+      }
+      return;
+    }
+
+    try {
+      await deletePlayerTechnique(draftId, dpId, target.id);
+      await addPlayerTechnique(draftId, dpId, pending.id, target.order);
+      const fresh = (await getPlayerTechniques(draftId, dpId)).techniques || [];
+      setTechs(fresh.sort((a, b) => a.order - b.order));
+      toast.success(`Reemplazada '${target.name}' por '${pending.name}'`);
+    } catch (e) {
+      toast.error("No se pudo intercambiar");
+    } finally {
+      setCatalog((c) => c.filter((x) => !x.__pendingSwap));
     }
   }
 
@@ -237,7 +260,11 @@ function PlayerTechPopup({
 
   async function handleSave() {
     try {
-      await reorderPlayerTechniques(draftId, dpId, techs.map((t) => t.id));
+      await reorderPlayerTechniques(
+        draftId,
+        dpId,
+        techs.map((t) => t.id)
+      );
       toast.success("Guardado");
       onClose();
     } catch (e) {
@@ -246,6 +273,9 @@ function PlayerTechPopup({
   }
 
   if (!open || !player) return null;
+
+  const genderCode = player.gender ?? genderMap[player.id];
+  const genderLabel = GENDER_LABEL[genderCode] || "—";
 
   return (
     <div className="fixed inset-0 z-[99999] bg-black/60 flex items-center justify-center">
@@ -304,7 +334,7 @@ function PlayerTechPopup({
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
                   <span className="text-white/60">Sexo:</span>{" "}
-                  <span className="font-medium">{GENDER_LABEL[player.gender] || "—"}</span>
+                  <span className="font-medium">{genderLabel}</span>
                 </div>
 
                 <div className="px-3 py-2 rounded border border-white/10 bg-white/10">
@@ -348,6 +378,8 @@ function PlayerTechPopup({
                       <li
                         key={slot}
                         className="flex items-center justify-between px-4 py-3 bg-white/[0.03]"
+                        onClick={() => swapInto(slot)}
+                        title="Haz clic para reemplazar aquí si tienes una técnica seleccionada"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-white/50 w-6 text-right">
@@ -371,19 +403,28 @@ function PlayerTechPopup({
                           {t && (
                             <>
                               <button
-                                onClick={() => move(slot, "up")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  move(slot, "up");
+                                }}
                                 className="px-2 py-1 rounded bg-white/10 hover:bg-white/20"
                               >
                                 ↑
                               </button>
                               <button
-                                onClick={() => move(slot, "down")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  move(slot, "down");
+                                }}
                                 className="px-2 py-1 rounded bg-white/10 hover:bg-white/20"
                               >
                                 ↓
                               </button>
                               <button
-                                onClick={() => handleDelete(t)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(t);
+                                }}
                                 className="px-2 py-1 rounded bg-rose-600 hover:bg-rose-500"
                               >
                                 Eliminar
@@ -451,25 +492,25 @@ function PlayerTechPopup({
             </div>
 
             <div className="mt-3 max-h-72 overflow-auto divide-y divide-white/10">
-              {catalog.map((t) => (
-                <div key={t.id} className="flex items-center justify-between py-2">
-                  <div className="space-x-2">
-                    <span className="font-medium">{t.name}</span>
-                    <span className={pill}>{t.type}</span>
-                    <span className={pill}>{t.element}</span>
-                    <span className="text-xs text-white/70">
-                      Poder: {t.power}
-                    </span>
+              {catalog
+                .filter((t) => !t.__pendingSwap)
+                .map((t) => (
+                  <div key={t.id} className="flex items-center justify-between py-2">
+                    <div className="space-x-2">
+                      <span className="font-medium">{t.name}</span>
+                      <span className={pill}>{t.type}</span>
+                      <span className={pill}>{t.element}</span>
+                      <span className="text-xs text-white/70">Poder: {t.power}</span>
+                    </div>
+                    <button
+                      onClick={() => handleAdd(t)}
+                      className="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500"
+                    >
+                      {techs.length < 6 ? "Añadir" : "Intercambiar…"}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleAdd(t)}
-                    className="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500"
-                  >
-                    {techs.length < 6 ? "Añadir" : "Intercambiar…"}
-                  </button>
-                </div>
-              ))}
-              {catalog.length === 0 && (
+                ))}
+              {catalog.filter((t) => !t.__pendingSwap).length === 0 && (
                 <div className="py-6 text-center text-white/70">Sin resultados</div>
               )}
             </div>
@@ -533,7 +574,7 @@ export default function Team() {
     bench: [],
     reserves: [],
     name: "",
-    budget: "0",
+    budget: 0,
   });
   const [formation, setFormation] = useState("4-4-2");
   const [loading, setLoading] = useState(true);
@@ -541,6 +582,9 @@ export default function Team() {
   const [overlayStyle, setOverlayStyle] = useState({ width: 0 });
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Género por dp.id cuando get_lineup no lo trae
+  const [genderMap, setGenderMap] = useState({});
 
   // Popup ST
   const [techOpen, setTechOpen] = useState(false);
@@ -550,20 +594,33 @@ export default function Team() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
-  /* ---------- Cargar alineación ---------- */
+  /* ---------- Cargar alineación + presupuesto/género ---------- */
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const data = await getLineup(draftId);
         setFormation(data.formation || "4-4-2");
-        setTeam({
+        setTeam((prev) => ({
+          ...prev,
           starters: data.starters || [],
           bench: data.bench || [],
           reserves: data.reserves || [],
           name: data.team || "",
-          budget: data.budget || "0",
-        });
+        }));
+
+        // Presupuesto y géneros desde myTeam
+        try {
+          const t = await myTeam(draftId);
+          const gMap = {};
+          (t?.players || []).forEach((p) => {
+            gMap[p.id] = p.gender; // 'M' | 'F'
+          });
+          setGenderMap(gMap);
+          setTeam((prev) => ({ ...prev, budget: Number(t?.budget || 0) }));
+        } catch {
+          // si falla, mantenemos lo que hay
+        }
       } catch (err) {
         console.error("Error al cargar alineación:", err);
         toast.error("Error al cargar la alineación");
@@ -595,10 +652,16 @@ export default function Team() {
     }
   }, [draftId, formation, team]);
 
-  /* ---------- Navegación del popup: lista plana ---------- */
+  /* ---------- Lista plana para navegación del popup ---------- */
   const allPlayers = useMemo(
     () => [...team.starters, ...team.bench, ...team.reserves],
     [team]
+  );
+
+  /* ---------- Valor de plantilla ---------- */
+  const squadValue = useMemo(
+    () => allPlayers.reduce((acc, p) => acc + Number(p?.value || 0), 0),
+    [allPlayers]
   );
 
   /* ---------- Drag & Drop ---------- */
@@ -721,6 +784,16 @@ export default function Team() {
         </div>
 
         <h1 className="text-3xl font-bold mt-4">{team.name}</h1>
+
+        {/* Presupuesto y valor plantilla */}
+        <div className="mt-2 flex items-center justify-center gap-3 text-sm">
+          <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
+            Presupuesto: {Number(team.budget || 0).toLocaleString()}€
+          </span>
+          <span className="px-3 py-1 rounded bg-white/10 border border-white/10">
+            Valor plantilla: {squadValue.toLocaleString()}€
+          </span>
+        </div>
       </div>
 
       {/* Campo de fútbol */}
@@ -847,6 +920,7 @@ export default function Team() {
           players={allPlayers}
           index={techIndex}
           setIndex={setTechIndex}
+          genderMap={genderMap}
         />
       )}
     </main>
