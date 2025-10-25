@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { viewRanking } from "../api/ranking";
+import { viewRanking, getTopScorers, getTopGoalkeepers } from "../api/ranking";
 
 export default function Ranking() {
   const nav = useNavigate();
@@ -13,21 +13,43 @@ export default function Ranking() {
   const [stats, setStats] = useState({ goles: [], asistencias: [], golesEncajados: [] });
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await viewRanking(leagueId);
-        setTeams(data ?? []);
-      } catch (e) {
-        setError("No se pudo cargar el ranking.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const rankingData = await viewRanking(leagueId);
 
-    load();
-  }, [leagueId]);
+      const [scorersData, goalkeepersData] = await Promise.all([
+        getTopScorers(leagueId),
+        getTopGoalkeepers(leagueId),
+      ]);
+
+      setTeams(rankingData ?? []);
+      setStats({
+        goles: scorersData.map((p) => ({
+          id: p["id"],
+          player: p["name"],
+          team: p["team"],
+          value: p["goals"],
+        })),
+        asistencias: [],
+        golesEncajados: goalkeepersData.map((p) => ({
+          id: p["id"],
+          player: p["name"],
+          team: p["team"],
+          value: p["against_goals"],
+        })),
+      });
+    } catch (e) {
+      console.error(e);
+      setError("No se pudo cargar el ranking o las estadísticas.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, [leagueId]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen text-white">
@@ -83,17 +105,16 @@ export default function Ranking() {
               <button
                 key={tab}
                 onClick={() => setStatTab(tab)}
-                className={`px-3 py-1 rounded-lg font-medium ${
-                  statTab === tab
-                    ? "bg-yellow-400 text-black"
-                    : "bg-white/10 text-white/70"
-                } transition`}
+                className={`px-3 py-1 rounded-lg font-medium ${statTab === tab
+                  ? "bg-yellow-400 text-black"
+                  : "bg-white/10 text-white/70"
+                  } transition`}
               >
                 {tab === "goles"
                   ? "Goles"
                   : tab === "asistencias"
-                  ? "Asistencias"
-                  : "Goles encajados"}
+                    ? "Asistencias"
+                    : "Goles encajados"}
               </button>
             ))}
           </div>
@@ -101,7 +122,10 @@ export default function Ranking() {
           <ul className="space-y-2">
             {stats[statTab]?.length > 0 ? stats[statTab].map((item, idx) => (
               <li key={idx} className="flex items-center justify-between bg-white/10 rounded-md px-3 py-2">
-                <span>{idx + 1}. {item.player}</span>
+                <span>
+                  {idx + 1}. {item.player}
+                  {item.team && <span className="text-white/50 text-sm ml-2">({item.team})</span>}
+                </span>
                 <span className="text-white/60">{item.value}</span>
               </li>
             )) : (
