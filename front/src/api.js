@@ -9,29 +9,23 @@ export const api = axios.create({
   },
 });
 
-// Función para leer la cookie CSRF
-function getCookie(name) {
-  return document.cookie
-    .split("; ")
-    .find((r) => r.startsWith(name + "="))
-    ?.split("=")[1];
-}
-
-// Interceptor para añadir X-CSRFToken a las peticiones "unsafe"
-api.interceptors.request.use((config) => {
-  const csrf = getCookie("csrftoken");
-  if (csrf && !config.headers["X-CSRFToken"]) {
-    config.headers["X-CSRFToken"] = csrf;
-  }
-  return config;
-});
-
 // -----------------------------------
 // Funciones de API
 // -----------------------------------
 
 // 1️⃣ Obtener CSRF cookie (debe llamarse antes de POST/PUT/DELETE)
-export const getCsrf = () => api.get("/auth/csrf");
+export const getCsrf = async () => {
+  const { data } = await api.get("/auth/csrf");      // ← el backend devuelve { csrfToken: "..." }
+  api.defaults.headers.common["X-CSRFToken"] = data.csrfToken; // ← guardamos el header por defecto
+  return data.csrfToken;
+};
+
+// 1.5️⃣ Helper: asegura que el token CSRF está cargado (reutilizable)
+export const ensureCsrf = async () => {
+  if (!api.defaults.headers.common["X-CSRFToken"]) {
+    await getCsrf();
+  }
+};
 
 // 2️⃣ Login (llama primero a getCsrf)
 export const login = async (username, password) => {

@@ -1,5 +1,5 @@
 // src/api/match.js
-import { api } from "../api";
+import { api, ensureCsrf  } from "../api";
 
 export const viewMatchs = async (leagueId) => {
   const res = await api.get(`/games/league/${leagueId}`);
@@ -18,16 +18,19 @@ export const getMatchResultRequests = async (gameId) => {
 };
 
 export const addMatchResultRequest = async (gameId, payload) => {
+  await ensureCsrf();
   const res = await api.post(`/games/${gameId}/requests`, payload);
   return res.data;
 };
 
 export const approveMatchResultRequest = async (requestId) => {
+  await ensureCsrf();
   const res = await api.put(`/games/${requestId}/approve`);
   return res.data;
 };
 
 export const rejectMatchResultRequest = async (requestId) => {
+  await ensureCsrf();
   const res = await api.put(`/games/${requestId}/reject`);
   return res.data;
 };
